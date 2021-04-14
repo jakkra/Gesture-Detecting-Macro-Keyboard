@@ -79,7 +79,7 @@ if __name__ == "__main__":
                         img = img.astype('float32')
                         training_data.append(raw_data)
                         sameple_number = sameple_number + 1
-                        print('Sample {0} added', sameple_number)
+                        print('Sample {0} added'.format(sameple_number))
         except KeyboardInterrupt:
             print('EXIT')
             sys.exit()
