@@ -1,0 +1,3 @@
+[submodule "components/Trill-esp-idf"]
+	path = components/Trill-esp-idf
+	url = git@github.com:jakkra/Trill-esp-idf.git

@@ -6,6 +6,7 @@
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "gesture_model_tflite.h"
+#include "Trill.h"
 
 #include "esp_err.h"
 #include "esp_log.h"
@@ -21,6 +22,7 @@ namespace {
   float * input = nullptr;
   constexpr int kTensorArenaSize = 35 * 1024;
   uint8_t tensor_arena[kTensorArenaSize];
+  int input_length_bytes;
 }  // namespace
 
 esp_err_t tf_gesture_predictor_init(void) {
@@ -67,6 +69,8 @@ esp_err_t tf_gesture_predictor_init(void) {
   ESP_LOGI(TAG, "Output size: %d", output->dims->size);
   ESP_LOGI(TAG, "Num gestures: %d",output->dims->data[1]);
 
+  input_length_bytes = model_input->bytes;
+
   return ESP_OK;
 }
 
@@ -74,18 +78,19 @@ esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_p
   TfLiteStatus invoke_status;
   float max = 0;
   gesture_label_t label;
+
+  assert(data_length == input_length_bytes);
   
   memcpy(input, input_data, data_length);
   if (print_input) {
     for (int row = 0; row < 28 * 28; row++) {
-      printf("%d ", (int)input[row]);
       if (row % 28 == 0) {
         printf("\n");
       }
+      printf("%d ", (int)input[row]);
     }
     printf("\n");
   }
-
   invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk) {
     ESP_LOGE(TAG, "Invoke ERROR %d\n", invoke_status);
