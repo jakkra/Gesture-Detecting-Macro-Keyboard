@@ -7,6 +7,7 @@ extern "C" {
 
 esp_err_t touchpad_sensor_init(void);
 float* touchpad_sensor_fetch(void);
+bool touchpad_sensor_print_raw(void);
 
 #ifdef __cplusplus
 }

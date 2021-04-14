@@ -69,3 +69,33 @@ float* touchpad_sensor_fetch(void)
 
     return NULL;
 }
+
+bool touchpad_sensor_print_raw(void)
+{
+    bool touchActive = false;
+
+    while (true) {
+        trillSensor.read();
+        if (trillSensor.getNumTouches() > 0 && trillSensor.getNumHorizontalTouches() > 0) {
+            if (!touchActive) {
+                printf("START:");
+            }
+            printf("%d", trillSensor.touchHorizontalLocation(0));
+            printf(",");
+
+            printf("%d", MAX_TRILL_COORDINATE - trillSensor.touchLocation(0));
+            printf(",");
+            touchActive = true;
+        } else if (touchActive) {
+            // Print a single line when touch goes off
+            touchActive = false;
+            printf("\n");
+            return true;
+        } else {
+            return false;
+        }
+        vTaskDelay(pdMS_TO_TICKS(SAMPLE_DELAY));
+    }
+
+    return false;
+}

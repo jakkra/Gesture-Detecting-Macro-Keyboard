@@ -10,14 +10,22 @@
 #include "vertical.h"
 #include "v.h"
 
-static char* getNameOfPrediction(gesture_label_t prediction);
+//#define TRAINING
 
+static void runPrintTrainData(void);
+static char* getNameOfPrediction(gesture_label_t prediction);
 
 void app_main(void) {
   gesture_prediction_t prediction;
   float* in_matrix;
 
   ESP_ERROR_CHECK(touchpad_sensor_init());
+
+#ifdef TRAINING
+  runPrintTrainData();
+  // Never returns
+  assert(false);
+#endif
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
   
   int64_t start = esp_timer_get_time();
@@ -30,6 +38,14 @@ void app_main(void) {
       tf_gesture_predictor_run(in_matrix, 28 * 28 * sizeof(float), &prediction, true);
       printf("Prediction: %s, prob: %f\n", getNameOfPrediction(prediction.label),  prediction.probability);
     } else {
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+  }
+}
+
+static void runPrintTrainData(void) {
+  while (true) {
+    if (!touchpad_sensor_print_raw()) {
       vTaskDelay(pdMS_TO_TICKS(10));
     }
   }
