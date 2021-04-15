@@ -141,20 +141,40 @@ if __name__ == "__main__":
 	# Convert to C++ file
 	res = os.system("xxd -i {0}/gesture_model.tflite > {0}/gesture_model_tflite.cc".format(output_dir))
 
+	# Rename the model, xxd gives it a name that contains the directory path also make the model const
+	cppModelFileContentLines = []
+	with open(output_dir + 'gesture_model_tflite.cc', 'r') as f:
+		cppModelFileContentLines = f.readlines()
+	os.remove(output_dir + 'gesture_model_tflite.cc')
+	cppModelFileContentLines[0] = 'const unsigned char gesture_model_tflite_data[] = {\n'
+	cppModelFileContentLines.insert(0, '#include "gesture_model_tflite.h"\n')
+	with open(output_dir + 'gesture_model_tflite.cc', 'w') as f:
+		f.writelines(cppModelFileContentLines)
+	
 	# Create header file to access generated model
 	# Append to the header file the map between TF result and the actual gesture
 	with open(output_dir + 'gesture_model_tflite.h', 'w') as f:
 		f.write('/*\nThis is a automatically generated TensorFlow Lite model by train_gestures.py, see README.md for more info.\nIt is converted into a C data array using xxd and is defined in gesture_model_tflite.cc\n*/\n')
 		f.write('#ifndef TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
 		f.write('#define TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
-		f.write('extern const unsigned char gesture_model_tflite[];\n')
-		f.write('extern const int gesture_model_tflite_len;\n')
+		f.write('extern const unsigned char gesture_model_tflite_data[];\n')
 
 		f.write('\ntypedef enum gesture_label_t \n{\n')
 		for idx, key in enumerate(gesture_map.keys()):
 			f.write('\tLABEL_{0} = {1},\n'.format(key.upper(), idx))
-
+		f.write('\tLABEL_END\n')
 		f.write('} gesture_label_t;\n')
+
+		f.write('\n')
+
+		# Generate prediction to string
+		f.write('static inline const char* getNameOfPrediction(gesture_label_t prediction)\n')
+		f.write('{\n\tswitch (prediction) {\n')
+		for idx, key in enumerate(gesture_map.keys()):
+			f.write('\t\tcase LABEL_{0}: return \"LABEL_{1}\";\n'.format(key.upper(), key.upper()))
+		f.write('\t\tdefault: return "UNKNOWN_PREDICTION";\n')
+		f.write('\t}\n')
+		f.write('}\n\n')
 
 		f.write('#endif  // TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
 	

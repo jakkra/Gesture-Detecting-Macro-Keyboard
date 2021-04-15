@@ -201,7 +201,6 @@ void ble_hid_init(void)
 void ble_hid_send_key(key_mask_t key_mask, uint8_t* keys, uint16_t num_keys)
 {
     if (sec_conn) {
-        ESP_LOGI(TAG, "Send the volume");
         esp_hidd_send_keyboard_value(hid_conn_id, key_mask, keys, num_keys);
     }
 }

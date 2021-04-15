@@ -21,9 +21,9 @@
 #define TAG = "main";
 
 //#define TRAINING
-
+#ifdef TRAINING
 static void runPrintTrainData(void);
-static char* getNameOfPrediction(gesture_label_t prediction);
+#endif
 static void sendKeysFromGesture(gesture_label_t prediction);
 
 void app_main(void) {
@@ -79,16 +79,7 @@ static void runPrintTrainData(void) {
 }
 #endif
 
-static char* getNameOfPrediction(gesture_label_t prediction)
-{
-  switch(prediction) {
-    case LABEL_LINE_DOWN_GESTURE: return "LABEL_LINE_DOWN_GESTURE";
-    case LABEL_LINE_HORIZONTAL_GESTURE: return "LABEL_LINE_HORIZONTAL_GESTURE";
-    case LABEL_O_GESTURE: return "LABEL_O_GESTURE";
-    case LABEL_V_GESTURE: return "LABEL_V_GESTURE";
-    default: return "UNKNOWN_PREDICTION";
-  }
-}
+
 
 static void sendKeysFromGesture(gesture_label_t prediction)
 {
