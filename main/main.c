@@ -18,13 +18,14 @@
 #include "v.h"
 
 
-#define TAG = "main";
+static const char* TAG = "main";
 
 //#define TRAINING
 #ifdef TRAINING
 static void runPrintTrainData(void);
 #endif
 static void sendKeysFromGesture(gesture_label_t prediction);
+static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
 
 void app_main(void) {
   esp_err_t ret;
@@ -34,12 +35,13 @@ void app_main(void) {
     ESP_ERROR_CHECK(nvs_flash_erase());
     ret = nvs_flash_init();
   }
-  ESP_ERROR_CHECK( ret );
+  ESP_ERROR_CHECK(ret);
 
   gesture_prediction_t prediction;
   float* in_matrix;
 
-  ESP_ERROR_CHECK(touchpad_sensor_init());
+  //ESP_ERROR_CHECK(touchpad_sensor_init());
+  touch_sensors_init(&touch_bar_event_callback);
 
 #ifdef TRAINING
   runPrintTrainData();
@@ -55,7 +57,7 @@ void app_main(void) {
   printf("Prediction took %d\n", (int)(esp_timer_get_time() - start) / 1000);
 
   while (true) {
-    in_matrix = touchpad_sensor_fetch();
+    in_matrix = touch_sensors_touchpad_fetch();
     if (in_matrix) {
       tf_gesture_predictor_run(in_matrix, 28 * 28 * sizeof(float), &prediction, true);
 
@@ -72,14 +74,12 @@ void app_main(void) {
 #ifdef TRAINING
 static void runPrintTrainData(void) {
   while (true) {
-    if (!touchpad_sensor_print_raw()) {
+    if (!touch_sensors_touchpad_print_raw()) {
       vTaskDelay(pdMS_TO_TICKS(10));
     }
   }
 }
 #endif
-
-
 
 static void sendKeysFromGesture(gesture_label_t prediction)
 {
@@ -92,9 +92,47 @@ static void sendKeysFromGesture(gesture_label_t prediction)
   if (err) {
     return;
   }
+  if (ble_hid_request_access(50) == ESP_OK) {
+    ble_hid_send_key(key_mask, keys, num_keys);
+    
+    vTaskDelay(pdMS_TO_TICKS(20));
+    ble_hid_send_key(0, NULL, 0);
+    ble_hid_give_access();
+  }
 
-  ble_hid_send_key(key_mask, keys, num_keys);
-  
-  vTaskDelay(pdMS_TO_TICKS(20));
-  ble_hid_send_key(0, NULL, 0);
+}
+
+static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
+{
+  consumer_cmd_t key = 0;
+
+  switch (state) {
+    case TOUCH_BAR_TOUCH_START:
+      printf("TOUCH_BAR_TOUCH_START\n");
+      break;
+    case TOUCH_BAR_MOVING_UP:
+      printf("TOUCH_BAR_MOVING_UP\n");
+      key = HID_CONSUMER_VOLUME_UP;
+      break;
+    case TOUCH_BAR_MOVING_DOWN:
+      printf("TOUCH_BAR_MOVING_DOWN\n");
+      key = HID_CONSUMER_VOLUME_DOWN;
+      break;
+    case TOUCH_BAR_TOUCHED_IDLE:
+      printf("TOUCH_BAR_TOUCHED_IDLE\n");
+      break;
+    case TOUCH_BAR_TOUCH_END:
+      printf("TOUCH_BAR_END\n");
+      break;
+    default:
+      break;
+      ESP_LOGE(TAG, "Unknown touch bar state %d", state);
+  }
+  if (key != 0) {
+    if (ble_hid_request_access(50) == ESP_OK) {
+      ble_hid_send_consumer_key(key, true);
+      ble_hid_send_consumer_key(key, false);
+      ble_hid_give_access();
+    }
+  }
 }

@@ -2,6 +2,7 @@
 #include "Trill.h"
 #include "driver/i2c.h"
 #include <string.h>
+#include "esp_log.h"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
@@ -16,12 +17,22 @@
 
 #define SAMPLE_DELAY 2
 
-static float input[MAX_LOCAL_COORDINATE][MAX_LOCAL_COORDINATE];
-static Trill trillSensor;
+static const char* TAG = "touchpad_sensor";
 
-esp_err_t touchpad_sensor_init(void)
+static void touch_bar_task(void* params);
+
+static float input[MAX_LOCAL_COORDINATE][MAX_LOCAL_COORDINATE];
+static Trill trillSquare;
+static Trill trillBar;
+static touch_bar_callback* bar_event_callback;
+
+esp_err_t touch_sensors_init(touch_bar_callback* touch_bar_callback);
+float* touch_sensors_touchpad_fetch(void);
+
+esp_err_t touch_sensors_init(touch_bar_callback* touch_bar_callback)
 {
-    int ret;
+    int err;
+    esp_err_t ret = ESP_OK;
     i2c_config_t i2c_config;
     i2c_config.mode = I2C_MODE_MASTER;
     i2c_config.sda_io_num = SDA_PIN;
@@ -33,11 +44,26 @@ esp_err_t touchpad_sensor_init(void)
     ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_config));
     ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 
-    ret = trillSensor.setup(Trill::TRILL_SQUARE, I2C_NUM_0);
+    err = trillSquare.setup(Trill::TRILL_SQUARE, I2C_NUM_0);
+    if (err) {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Failed to init TRILL_SQUARE: %d", err);
+    }
+    err = trillBar.setup(Trill::TRILL_BAR, I2C_NUM_0);
+    if (!err) {
+        TaskHandle_t touch_task_handle;
+        BaseType_t status = xTaskCreate(touch_bar_task, "touchbar_task", 2048, NULL, tskIDLE_PRIORITY, &touch_task_handle);
+        assert(status == pdPASS);
+    } else {
+        ret = ESP_FAIL;
+        ESP_LOGE(TAG, "Failed to init TRILL_BAR: %d", err);
+    }
+    bar_event_callback = touch_bar_callback;
+
     return ret == 0  ? ESP_OK : ESP_FAIL;
 }
 
-float* touchpad_sensor_fetch(void)
+float* touch_sensors_touchpad_fetch(void)
 {
     bool touchActive = false;
     uint16_t input_x;
@@ -46,13 +72,13 @@ float* touchpad_sensor_fetch(void)
     uint8_t y;
 
     while (true) {
-        trillSensor.read();
-        if (trillSensor.getNumTouches() > 0 && trillSensor.getNumHorizontalTouches() > 0) {
+        trillSquare.read();
+        if (trillSquare.getNumTouches() > 0 && trillSquare.getNumHorizontalTouches() > 0) {
             if (!touchActive) {
                 memset(input, 0, sizeof(input));
             }
-            input_x = MAX_TRILL_COORDINATE - trillSensor.touchLocation(0);
-            input_y = trillSensor.touchHorizontalLocation(0);
+            input_x = MAX_TRILL_COORDINATE - trillSquare.touchLocation(0);
+            input_y = trillSquare.touchHorizontalLocation(0);
             x = MAX((input_x / DIVIDER_FACTOR) - 1, 0);
             y = MAX((input_y / DIVIDER_FACTOR) - 1, 0);
             input[x][y] = 1;
@@ -70,20 +96,20 @@ float* touchpad_sensor_fetch(void)
     return NULL;
 }
 
-bool touchpad_sensor_print_raw(void)
+bool touch_sensors_touchpad_print_raw(void)
 {
     bool touchActive = false;
 
     while (true) {
-        trillSensor.read();
-        if (trillSensor.getNumTouches() > 0 && trillSensor.getNumHorizontalTouches() > 0) {
+        trillSquare.read();
+        if (trillSquare.getNumTouches() > 0 && trillSquare.getNumHorizontalTouches() > 0) {
             if (!touchActive) {
                 printf("START:");
             }
-            printf("%d", trillSensor.touchHorizontalLocation(0));
+            printf("%d", trillSquare.touchHorizontalLocation(0));
             printf(",");
 
-            printf("%d", MAX_TRILL_COORDINATE - trillSensor.touchLocation(0));
+            printf("%d", MAX_TRILL_COORDINATE - trillSquare.touchLocation(0));
             printf(",");
             touchActive = true;
         } else if (touchActive) {
@@ -98,4 +124,50 @@ bool touchpad_sensor_print_raw(void)
     }
 
     return false;
+}
+
+static void touch_bar_task(void* params)
+{
+    bool touchActive = false;
+    int16_t input_val;
+    int16_t prev_val;
+    int min_input = 1408;
+    //int max_input = 1792;
+    int required_diff = 50;
+
+    while (true) {
+        trillBar.read();
+        if (trillBar.getNumTouches() > 0) {
+            input_val = MAX_TRILL_COORDINATE - trillBar.touchLocation(0);
+            input_val = input_val + min_input; // Make input between 0 and max_input + min_input;
+            if (!touchActive) {
+                touchActive = true;
+                prev_val = input_val;
+                bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
+            } else {
+                if (abs(input_val - prev_val) > required_diff) {
+                    if (input_val > prev_val) {
+                        printf("UP\n");
+                        bar_event_callback(TOUCH_BAR_MOVING_UP, input_val);
+                    } else {
+                        printf("Down\n");
+                        bar_event_callback(TOUCH_BAR_MOVING_DOWN, input_val);
+                    }
+                } else {
+                    printf("IDLE\n");
+                    bar_event_callback(TOUCH_BAR_TOUCHED_IDLE, input_val);
+                }
+            }
+            printf("%d\n", input_val);
+            prev_val = input_val;
+        } else if(touchActive) {
+            touchActive = false;
+            bar_event_callback(TOUCH_BAR_TOUCH_END, input_val);
+            //return (float*)input;
+        } else {
+            //return NULL;
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
 }

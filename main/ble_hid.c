@@ -16,6 +16,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_bt.h"
+#include "freertos/semphr.h"
 
 #include "esp_hidd_prf_api.h"
 #include "esp_bt_defs.h"
@@ -36,6 +37,7 @@
 
 static uint16_t hid_conn_id = 0;
 static bool sec_conn = false;
+static xSemaphoreHandle sem_handle;
 
 static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param);
 
@@ -196,13 +198,42 @@ void ble_hid_init(void)
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
+
+    sem_handle = xSemaphoreCreateBinary();
+    assert(sem_handle != NULL);
+    xSemaphoreGive(sem_handle);
 }
 
-void ble_hid_send_key(key_mask_t key_mask, uint8_t* keys, uint16_t num_keys)
+esp_err_t ble_hid_send_key(key_mask_t key_mask, uint8_t* keys, uint16_t num_keys)
 {
+    esp_err_t ret = ESP_FAIL;
+
     if (sec_conn) {
-        esp_hidd_send_keyboard_value(hid_conn_id, key_mask, keys, num_keys);
+        if (uxSemaphoreGetCount(sem_handle) == 0) {
+            esp_hidd_send_keyboard_value(hid_conn_id, key_mask, keys, num_keys);
+            ret = ESP_OK;
+        } else {
+            ret = ESP_FAIL;
+        }
     }
+
+    return ret;
+}
+
+esp_err_t ble_hid_send_consumer_key(consumer_cmd_t key, bool key_pressed)
+{
+    esp_err_t ret = ESP_FAIL;
+
+    if (sec_conn) {
+        if (uxSemaphoreGetCount(sem_handle) == 0) {
+            esp_hidd_send_consumer_value(hid_conn_id, key, key_pressed);
+            ret = ESP_OK;
+        } else {
+            ret = ESP_FAIL;
+        }
+    }
+
+    return ret;
 }
 
 void ble_hid_set_pairable(bool pairable)
@@ -210,3 +241,21 @@ void ble_hid_set_pairable(bool pairable)
     // TODO
 }
 
+esp_err_t ble_hid_request_access(uint32_t timeout_ms) {
+    if (xSemaphoreTake(sem_handle, pdMS_TO_TICKS(timeout_ms)) == pdPASS) {
+        return ESP_OK;
+    }
+
+    return ESP_ERR_TIMEOUT;
+}
+
+// Should provide a handle also so that you cannot leave access for someone else, but this will do for now.
+esp_err_t ble_hid_give_access(void) {
+    if (uxSemaphoreGetCount(sem_handle) != 0) {
+        // 
+        return ESP_FAIL;
+    }
+    xSemaphoreGive(sem_handle);
+    
+    return ESP_OK;
+}
