@@ -16,6 +16,9 @@
 #define SCL_PIN GPIO_NUM_22
 
 #define SAMPLE_DELAY 2
+#define TRILL_BAR_READ_INTERVAL_MS 50
+#define TRILL_BAR_MIN_INPUT_VAL 1408
+#define TRILL_BAR_MIN_CHANGE 25
 
 static const char* TAG = "touchpad_sensor";
 
@@ -131,43 +134,48 @@ static void touch_bar_task(void* params)
     bool touchActive = false;
     int16_t input_val;
     int16_t prev_val;
-    int min_input = 1408;
-    //int max_input = 1792;
-    int required_diff = 50;
 
     while (true) {
         trillBar.read();
-        if (trillBar.getNumTouches() > 0) {
+        if (trillBar.getNumTouches() == 1) {
             input_val = MAX_TRILL_COORDINATE - trillBar.touchLocation(0);
-            input_val = input_val + min_input; // Make input between 0 and max_input + min_input;
+            input_val = input_val + TRILL_BAR_MIN_INPUT_VAL; // Make input between 0 and max_input + min_input;
             if (!touchActive) {
-                touchActive = true;
-                prev_val = input_val;
-                bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
+                // Since sometimes if the Trill bar is dirty or similar it outputs random touches
+                // This is to verify that there still is a touch after TRILL_BAR_READ_INTERVAL_MS
+                bool check = true;
+                int16_t prev_check_val = input_val;
+                for (int i = 0; i < 10; i++) {
+                    vTaskDelay(pdMS_TO_TICKS(TRILL_BAR_READ_INTERVAL_MS / 10));
+                    trillBar.read();
+                    if (trillBar.getNumTouches() == 0 || trillBar.touchLocation(0) == input_val) {
+                        check = false;
+                        break;
+                    }
+                }
+                if (check) {
+                    touchActive = true;
+                    prev_val = input_val;
+                    bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
+                }
             } else {
-                if (abs(input_val - prev_val) > required_diff) {
+                if (abs(input_val - prev_val) > TRILL_BAR_MIN_CHANGE) {
                     if (input_val > prev_val) {
-                        printf("UP\n");
                         bar_event_callback(TOUCH_BAR_MOVING_UP, input_val);
                     } else {
-                        printf("Down\n");
                         bar_event_callback(TOUCH_BAR_MOVING_DOWN, input_val);
                     }
                 } else {
-                    printf("IDLE\n");
                     bar_event_callback(TOUCH_BAR_TOUCHED_IDLE, input_val);
                 }
             }
-            printf("%d\n", input_val);
+            
             prev_val = input_val;
-        } else if(touchActive) {
+        } else if (touchActive) {
             touchActive = false;
             bar_event_callback(TOUCH_BAR_TOUCH_END, input_val);
-            //return (float*)input;
-        } else {
-            //return NULL;
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(TRILL_BAR_READ_INTERVAL_MS));
     }
 
 }
