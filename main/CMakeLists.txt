@@ -6,4 +6,5 @@ idf_component_register(
     touchpad_sensor.cc
     ble_hid.c
     gesture_keymap.c
+    display.c
     INCLUDE_DIRS "")

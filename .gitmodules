@@ -1,3 +1,6 @@
 [submodule "components/Trill-esp-idf"]
 	path = components/Trill-esp-idf
 	url = git@github.com:jakkra/Trill-esp-idf.git
+[submodule "components/u8g2"]
+	path = components/u8g2
+	url = git@github.com:olikraus/u8g2.git

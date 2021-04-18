@@ -6,17 +6,22 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include <driver/i2c.h>
 #include "tf_gesture_predictor.h"
 #include "touchpad_sensor.h"
 #include "ble_hid.h"
 #include "hid_dev.h"
 #include "gesture_keymap.h"
 #include "hid_dev.h"
+#include "display.h"
 
 #include "horizontal.h"
 #include "vertical.h"
 #include "v.h"
 
+#define SDA_PIN GPIO_NUM_21
+#define SCL_PIN GPIO_NUM_22
+#define I2C_PORT I2C_NUM_0
 
 static const char* TAG = "main";
 
@@ -29,6 +34,8 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
 
 void app_main(void) {
   esp_err_t ret;
+  float* in_matrix;
+  gesture_prediction_t prediction;
 
   ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -37,12 +44,22 @@ void app_main(void) {
   }
   ESP_ERROR_CHECK(ret);
 
-  gesture_prediction_t prediction;
-  float* in_matrix;
+  i2c_config_t i2c_config;
+  i2c_config.mode = I2C_MODE_MASTER;
+  i2c_config.sda_io_num = SDA_PIN;
+  i2c_config.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  i2c_config.scl_io_num = SCL_PIN;
+  i2c_config.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  i2c_config.master.clk_speed = 100000;
 
-  //ESP_ERROR_CHECK(touchpad_sensor_init());
-  touch_sensors_init(&touch_bar_event_callback);
+  ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_config));
+  ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 
+  //ESP_ERROR_CHECK(touch_sensors_init(&touch_bar_event_callback));
+  touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
+  display_init(I2C_PORT, SDA_PIN, SCL_PIN);
+  display_draw_text("Draw some gestures!", 1);
+  display_draw_text("Next line test", 2);
 #ifdef TRAINING
   runPrintTrainData();
   // Never returns

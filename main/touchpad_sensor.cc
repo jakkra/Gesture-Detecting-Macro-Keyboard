@@ -28,31 +28,23 @@ static float input[MAX_LOCAL_COORDINATE][MAX_LOCAL_COORDINATE];
 static Trill trillSquare;
 static Trill trillBar;
 static touch_bar_callback* bar_event_callback;
+static i2c_port_t i2c_port;
 
 esp_err_t touch_sensors_init(touch_bar_callback* touch_bar_callback);
 float* touch_sensors_touchpad_fetch(void);
 
-esp_err_t touch_sensors_init(touch_bar_callback* touch_bar_callback)
+esp_err_t touch_sensors_init(i2c_port_t port, touch_bar_callback* touch_bar_callback)
 {
     int err;
     esp_err_t ret = ESP_OK;
-    i2c_config_t i2c_config;
-    i2c_config.mode = I2C_MODE_MASTER;
-    i2c_config.sda_io_num = SDA_PIN;
-    i2c_config.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    i2c_config.scl_io_num = SCL_PIN;
-    i2c_config.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    i2c_config.master.clk_speed = 100000;
+    i2c_port = port;
 
-    ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_config));
-    ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
-
-    err = trillSquare.setup(Trill::TRILL_SQUARE, I2C_NUM_0);
+    err = trillSquare.setup(Trill::TRILL_SQUARE, i2c_port);
     if (err) {
         ret = ESP_FAIL;
         ESP_LOGE(TAG, "Failed to init TRILL_SQUARE: %d", err);
     }
-    err = trillBar.setup(Trill::TRILL_BAR, I2C_NUM_0);
+    err = trillBar.setup(Trill::TRILL_BAR, i2c_port);
     if (!err) {
         TaskHandle_t touch_task_handle;
         BaseType_t status = xTaskCreate(touch_bar_task, "touchbar_task", 2048, NULL, tskIDLE_PRIORITY, &touch_task_handle);
@@ -169,7 +161,7 @@ static void touch_bar_task(void* params)
                     bar_event_callback(TOUCH_BAR_TOUCHED_IDLE, input_val);
                 }
             }
-            
+
             prev_val = input_val;
         } else if (touchActive) {
             touchActive = false;
