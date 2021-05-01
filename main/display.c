@@ -55,6 +55,14 @@ esp_err_t display_draw_text(char* text, uint8_t line_num)
     return ESP_OK;
 }
 
+esp_err_t display_clear(void)
+{
+    u8g2_ClearBuffer(&u8g2);
+    u8g2_SendBuffer(&u8g2);
+
+    return ESP_OK;
+}
+
 static uint8_t u8g2_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
     ESP_LOGD(TAG, "i2c_cb: Received a msg: %d, arg_int: %d, arg_ptr: %p", msg, arg_int, arg_ptr);
@@ -75,7 +83,6 @@ static uint8_t u8g2_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void
             }
             break;
         }
-
         case U8X8_MSG_BYTE_START_TRANSFER:
         {
             uint8_t i2c_address = u8x8_GetI2CAddress(u8x8);

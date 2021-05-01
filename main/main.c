@@ -31,6 +31,7 @@ static void runPrintTrainData(void);
 #endif
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
+static void update_display(gesture_prediction_t prediction);
 
 void app_main(void) {
   esp_err_t ret;
@@ -55,11 +56,12 @@ void app_main(void) {
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_config));
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 
-  //ESP_ERROR_CHECK(touch_sensors_init(&touch_bar_event_callback));
-  touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
+  ESP_ERROR_CHECK(touch_sensors_init(I2C_PORT, &touch_bar_event_callback));
   display_init(I2C_PORT, SDA_PIN, SCL_PIN);
   display_draw_text("Draw some gestures!", 1);
   display_draw_text("Next line test", 2);
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  display_clear();
 #ifdef TRAINING
   runPrintTrainData();
   // Never returns
@@ -70,17 +72,18 @@ void app_main(void) {
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
   
   int64_t start = esp_timer_get_time();
-  tf_gesture_predictor_run(vertical, sizeof(vertical), &prediction, true);
+  tf_gesture_predictor_run(vertical, sizeof(vertical), &prediction, false);
   printf("Prediction took %d\n", (int)(esp_timer_get_time() - start) / 1000);
 
   while (true) {
     in_matrix = touch_sensors_touchpad_fetch();
     if (in_matrix) {
-      tf_gesture_predictor_run(in_matrix, 28 * 28 * sizeof(float), &prediction, true);
+      tf_gesture_predictor_run(in_matrix, 28 * 28 * sizeof(float), &prediction, false);
 
       if (prediction.probability > 0.95f) {
         sendKeysFromGesture(prediction.label);
       }
+      update_display(prediction);
       printf("Prediction: %s, prob: %f\n", getNameOfPrediction(prediction.label),  prediction.probability);
     } else {
       vTaskDelay(pdMS_TO_TICKS(10));
@@ -117,6 +120,21 @@ static void sendKeysFromGesture(gesture_label_t prediction)
     ble_hid_give_access();
   }
 
+}
+
+static void update_display(gesture_prediction_t prediction)
+{
+  char text[100];
+  memset(text, 0, sizeof(text));
+
+  display_clear();
+  snprintf(text, sizeof(text), "Probability: %f", prediction.probability);
+  display_draw_text(text, 1);
+
+  memset(text, 0, sizeof(text));
+  snprintf(text, sizeof(text), "%s", getNameOfPrediction(prediction.label));
+  display_draw_text(text, 2);
+  vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)

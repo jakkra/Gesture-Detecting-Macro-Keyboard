@@ -32,7 +32,7 @@
 
 #define TAG "BLE_HID"
 
-#define HIDD_DEVICE_NAME            "GestureKeyboard"
+#define HIDD_DEVICE_NAME            "GestureMacroKeyboard"
 #define CHAR_DECLARATION_SIZE       (sizeof(uint8_t))
 
 static uint16_t hid_conn_id = 0;
