@@ -41,6 +41,7 @@ esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl) {
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);
+    u8g2_SetFlipMode(&u8g2, 1);
 
     return ESP_OK;
 }
@@ -117,7 +118,7 @@ static uint8_t u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int
             gpio_set_level(display_config.scl, arg_int);
             break;
         case U8X8_MSG_GPIO_I2C_DATA:
-                gpio_set_level(display_config.sda, arg_int);
+            gpio_set_level(display_config.sda, arg_int);
             break;
         case U8X8_MSG_DELAY_MILLI:
             vTaskDelay(arg_int/portTICK_PERIOD_MS);

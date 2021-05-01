@@ -7,4 +7,5 @@ idf_component_register(
     ble_hid.c
     gesture_keymap.c
     display.c
+    keypress_input.c
     INCLUDE_DIRS "")

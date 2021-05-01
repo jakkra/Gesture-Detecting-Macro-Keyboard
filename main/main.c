@@ -14,13 +14,14 @@
 #include "gesture_keymap.h"
 #include "hid_dev.h"
 #include "display.h"
+#include "keypress_input.h"
 
 #include "horizontal.h"
 #include "vertical.h"
 #include "v.h"
 
-#define SDA_PIN GPIO_NUM_21
-#define SCL_PIN GPIO_NUM_22
+#define SDA_PIN GPIO_NUM_25
+#define SCL_PIN GPIO_NUM_26
 #define I2C_PORT I2C_NUM_0
 
 static const char* TAG = "main";
@@ -44,6 +45,8 @@ void app_main(void) {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
+
+  keypress_input_init();
 
   i2c_config_t i2c_config;
   i2c_config.mode = I2C_MODE_MASTER;
