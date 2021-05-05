@@ -113,3 +113,7 @@ esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_p
 
   return ESP_OK;
 }
+
+const char* tf_gesture_predictor_get_name(gesture_label_t label) {
+  return getNameOfPrediction(label);
+}

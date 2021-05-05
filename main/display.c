@@ -26,6 +26,7 @@ static i2c_cmd_handle_t handle_i2c;
 static display_config_t display_config;
 static u8g2_t u8g2;
 
+
 esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl) {
     display_config.port = port;
     display_config.sda = sda;

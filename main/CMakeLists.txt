@@ -8,4 +8,6 @@ idf_component_register(
     gesture_keymap.c
     display.c
     keypress_input.c
+    crypto.c
+    menu.c
     INCLUDE_DIRS "")

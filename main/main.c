@@ -13,10 +13,15 @@
 #include "hid_dev.h"
 #include "gesture_keymap.h"
 #include "hid_dev.h"
-#include "display.h"
+#include "menu.h"
 #include "keypress_input.h"
 #include "driver/rmt.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "lwip/err.h"
+#include "lwip/sys.h"
 #include "led_strip.h"
+#include "crypto.h"
 
 #include "horizontal.h"
 #include "vertical.h"
@@ -36,12 +41,15 @@ static void runPrintTrainData(void);
 #endif
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
-static void update_display(gesture_prediction_t prediction);
 static void switch_pressed_callback(keypad_switch_t key);
 static void init_led_strip(void);
+static void init_wifi(void);
+static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+static void periodic_update_thread(void* arg);
+
 
 static led_strip_t *strip;
-
+bool wifi_connected;
 
 void app_main(void) {
   esp_err_t ret;
@@ -55,7 +63,6 @@ void app_main(void) {
   }
   ESP_ERROR_CHECK(ret);
   init_led_strip();
-  vTaskDelay(pdMS_TO_TICKS(10000));
   keypress_input_init(switch_pressed_callback);
 
   i2c_config_t i2c_config;
@@ -70,20 +77,20 @@ void app_main(void) {
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 
   ESP_ERROR_CHECK(touch_sensors_init(I2C_PORT, &touch_bar_event_callback));
-  display_init(I2C_PORT, SDA_PIN, SCL_PIN);
-  display_draw_text("Draw some gestures!", 1);
-  display_draw_text("Next line test", 2);
-  vTaskDelay(pdMS_TO_TICKS(1000));
-  display_clear();
+  //touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
+  menu_init(I2C_PORT, SDA_PIN, SCL_PIN);
 #ifdef TRAINING
   runPrintTrainData();
   // Never returns
   assert(false);
 #endif
   ble_hid_init();
+  init_wifi();
 
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
   
+  xTaskCreate(periodic_update_thread, "periodic_update_thread", 4096, NULL, 10, NULL);
+
   int64_t start = esp_timer_get_time();
   tf_gesture_predictor_run(vertical, sizeof(vertical), &prediction, false);
   printf("Prediction took %d\n", (int)(esp_timer_get_time() - start) / 1000);
@@ -96,7 +103,7 @@ void app_main(void) {
       if (prediction.probability > 0.95f) {
         sendKeysFromGesture(prediction.label);
       }
-      update_display(prediction);
+      menu_draw_gestures(&prediction);
       printf("Prediction: %s, prob: %f\n", getNameOfPrediction(prediction.label),  prediction.probability);
     } else {
       vTaskDelay(pdMS_TO_TICKS(10));
@@ -134,20 +141,7 @@ static void sendKeysFromGesture(gesture_label_t prediction)
   }
 }
 
-static void update_display(gesture_prediction_t prediction)
-{
-  char text[100];
-  memset(text, 0, sizeof(text));
 
-  display_clear();
-  snprintf(text, sizeof(text), "Probability: %f", prediction.probability);
-  display_draw_text(text, 1);
-
-  memset(text, 0, sizeof(text));
-  snprintf(text, sizeof(text), "%s", getNameOfPrediction(prediction.label));
-  display_draw_text(text, 2);
-  vTaskDelay(pdMS_TO_TICKS(1000));
-}
 
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
 {
@@ -206,6 +200,7 @@ static void switch_pressed_callback(keypad_switch_t key)
       break;
     case KEYPAD_SWITCH_6:
       buf = HID_KEY_6;
+      menu_next_page();
       break;
     default:
       return;
@@ -217,6 +212,47 @@ static void switch_pressed_callback(keypad_switch_t key)
     ble_hid_send_key(0, NULL, 0);
     ble_hid_give_access();
   }
+}
+
+static void init_wifi(void)
+{
+    ESP_ERROR_CHECK(esp_netif_init());
+
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,  IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = CONFIG_ESP_WIFI_SSID,
+            .password = CONFIG_ESP_WIFI_PASSWORD,
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+    ESP_ERROR_CHECK(esp_wifi_start() );
+
+    ESP_LOGI(TAG, "WiFi Started");
+}
+
+static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        ESP_LOGI(TAG, "Failed to connect WiFi");
+        wifi_connected = false;
+        esp_wifi_connect();
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        wifi_connected = true;
+    }
 }
 
 void set_pixel(led_strip_t *strip, uint32_t index, uint32_t red, uint32_t green, uint32_t blue, uint32_t brightness)
@@ -255,4 +291,15 @@ static void init_led_strip(void)
   }
   ESP_ERROR_CHECK(strip->refresh(strip, 100));
   ESP_LOGI(TAG, "LED Strip ready");
+}
+
+static void periodic_update_thread(void* arg) {
+  double btc, doge, btc_change, doge_change;
+  for (;;) {
+    crypto_get_price("bitcoin", &btc, &btc_change);
+    crypto_get_price("dogecoin", &doge, &doge_change);
+    printf("Bitcoin price: %f, change %f, doge %f, change %f\n", btc, doge, btc_change, doge_change);
+    menu_draw_crypto(btc, btc_change, doge, doge_change);
+    vTaskDelay(pdMS_TO_TICKS(5000));
+  }
 }

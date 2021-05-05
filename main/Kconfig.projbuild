@@ -1,4 +1,4 @@
-menu "Led Wall Decor project"
+menu "Gesture Detector Macro Keyboard"
     config RMT_TX_GPIO
         int "RMT TX GPIO"
         default 16
@@ -9,4 +9,14 @@ menu "Led Wall Decor project"
         default 5
         help
             Number of leds in your strip
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (WiFi name) to connect to.
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password to use.
 endmenu
