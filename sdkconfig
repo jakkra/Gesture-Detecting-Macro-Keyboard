@@ -121,6 +121,13 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# Led Wall Decor project
+#
+CONFIG_RMT_TX_GPIO=16
+CONFIG_STRIP_LED_NUMBER=5
+# end of Led Wall Decor project
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

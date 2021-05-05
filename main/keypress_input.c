@@ -30,17 +30,19 @@ static void button_task(void* arg);
 
 
 static btn_state_t buttons[NUM_BUTTONS] = {
-    { .gpio_num = KEY_1_PIN, .key = HID_KEY_1 },
-    { .gpio_num = KEY_2_PIN, .key = HID_KEY_2 },
-    { .gpio_num = KEY_3_PIN, .key = HID_KEY_3 },
-    { .gpio_num = KEY_4_PIN, .key = HID_KEY_4 },
-    { .gpio_num = KEY_5_PIN, .key = HID_KEY_5 },
-    { .gpio_num = KEY_6_PIN, .key = HID_KEY_6 },
+    { .gpio_num = KEY_1_PIN, .key = KEYPAD_SWITCH_1 },
+    { .gpio_num = KEY_2_PIN, .key = KEYPAD_SWITCH_2 },
+    { .gpio_num = KEY_3_PIN, .key = KEYPAD_SWITCH_3 },
+    { .gpio_num = KEY_4_PIN, .key = KEYPAD_SWITCH_4 },
+    { .gpio_num = KEY_5_PIN, .key = KEYPAD_SWITCH_5 },
+    { .gpio_num = KEY_6_PIN, .key = KEYPAD_SWITCH_6 },
 };
 
 static xQueueHandle button_evt_queue = NULL;
+static keypress_callback* pressed_callback;
 
-void keypress_input_init(void) {
+void keypress_input_init(keypress_callback* callback) {
+    pressed_callback = callback;
     configure_gpios();
 
     button_evt_queue = xQueueCreate(NUM_BUTTONS, sizeof(uint32_t));
@@ -58,12 +60,7 @@ static void button_task(void* arg)
             if (current_ms - button->last_press_ms > DEBOUNCE_TIME_MS) {
                 button->last_press_ms = current_ms;
                 printf("GPIO[%d] intr, PRESSED\n", button->gpio_num);
-                if (ble_hid_request_access(500) == ESP_OK) {
-                    ble_hid_send_key(0, &button->key, 1);
-                    vTaskDelay(pdMS_TO_TICKS(20));
-                    ble_hid_send_key(0, NULL, 0);
-                    ble_hid_give_access();
-                }
+                pressed_callback(button->key);
             }
         }
     }

@@ -15,6 +15,8 @@
 #include "hid_dev.h"
 #include "display.h"
 #include "keypress_input.h"
+#include "driver/rmt.h"
+#include "led_strip.h"
 
 #include "horizontal.h"
 #include "vertical.h"
@@ -23,8 +25,10 @@
 #define SDA_PIN GPIO_NUM_25
 #define SCL_PIN GPIO_NUM_26
 #define I2C_PORT I2C_NUM_0
+#define RMT_TX_CHANNEL RMT_CHANNEL_0
 
 static const char* TAG = "main";
+
 
 //#define TRAINING
 #ifdef TRAINING
@@ -33,6 +37,11 @@ static void runPrintTrainData(void);
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
 static void update_display(gesture_prediction_t prediction);
+static void switch_pressed_callback(keypad_switch_t key);
+static void init_led_strip(void);
+
+static led_strip_t *strip;
+
 
 void app_main(void) {
   esp_err_t ret;
@@ -45,8 +54,9 @@ void app_main(void) {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
-
-  keypress_input_init();
+  init_led_strip();
+  vTaskDelay(pdMS_TO_TICKS(10000));
+  keypress_input_init(switch_pressed_callback);
 
   i2c_config_t i2c_config;
   i2c_config.mode = I2C_MODE_MASTER;
@@ -122,7 +132,6 @@ static void sendKeysFromGesture(gesture_label_t prediction)
     ble_hid_send_key(0, NULL, 0);
     ble_hid_give_access();
   }
-
 }
 
 static void update_display(gesture_prediction_t prediction)
@@ -173,4 +182,77 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
       ble_hid_give_access();
     }
   }
+}
+
+static void switch_pressed_callback(keypad_switch_t key)
+{
+  uint8_t buf;
+
+  switch (key) {
+    case KEYPAD_SWITCH_1:
+      buf = HID_KEY_1;
+      break;
+    case KEYPAD_SWITCH_2:
+      buf = HID_KEY_2;
+      break;
+    case KEYPAD_SWITCH_3:
+      buf = HID_KEY_3;
+      break;
+    case KEYPAD_SWITCH_4:
+      buf = HID_KEY_4;
+      break;
+    case KEYPAD_SWITCH_5:
+      buf = HID_KEY_5;
+      break;
+    case KEYPAD_SWITCH_6:
+      buf = HID_KEY_6;
+      break;
+    default:
+      return;
+  }
+
+  if (ble_hid_request_access(250) == ESP_OK) {
+    ble_hid_send_key(LEFT_CONTROL_KEY_MASK | LEFT_ALT_KEY_MASK, &buf, 1);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    ble_hid_send_key(0, NULL, 0);
+    ble_hid_give_access();
+  }
+}
+
+void set_pixel(led_strip_t *strip, uint32_t index, uint32_t red, uint32_t green, uint32_t blue, uint32_t brightness)
+{
+  assert(strip != NULL);
+  assert(index < CONFIG_STRIP_LED_NUMBER);
+  assert(red <= 255);
+  assert(green <= 255);
+  assert(blue <= 255);
+  assert(brightness <= 255);
+
+  float bri_multiplier = (float)brightness / 255;
+  ESP_ERROR_CHECK(strip->set_pixel(strip, index, (float)red * bri_multiplier, (float)green * bri_multiplier, (float)blue * bri_multiplier));
+}
+
+static void init_led_strip(void)
+{
+  uint32_t r = 255, g = 255, b = 255, a = 255;
+  rmt_config_t config = RMT_DEFAULT_CONFIG_TX(CONFIG_RMT_TX_GPIO, RMT_TX_CHANNEL);
+  // set counter clock to 40MHz
+  config.clk_div = 2;
+
+  ESP_ERROR_CHECK(rmt_config(&config));
+  ESP_ERROR_CHECK(rmt_driver_install(config.channel, 0, 0));
+
+  // install ws2812 driver
+  led_strip_config_t strip_config = LED_STRIP_DEFAULT_CONFIG(CONFIG_STRIP_LED_NUMBER, (led_strip_dev_t)config.channel);
+  strip = led_strip_new_rmt_ws2812(&strip_config);
+  if (!strip) {
+      ESP_LOGE(TAG, "install WS2812 driver failed");
+  }
+
+  ESP_ERROR_CHECK(strip->clear(strip, 100));
+  for (uint16_t i = 0; i < CONFIG_STRIP_LED_NUMBER; i++) {
+      set_pixel(strip, i, r, g, b, a);
+  }
+  ESP_ERROR_CHECK(strip->refresh(strip, 100));
+  ESP_LOGI(TAG, "LED Strip ready");
 }

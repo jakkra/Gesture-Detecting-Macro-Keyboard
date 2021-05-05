@@ -148,8 +148,8 @@ static void touch_bar_task(void* params)
                 if (check) {
                     touchActive = true;
                     prev_val = input_val;
-                    bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
                 }
+                    bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
             } else {
                 if (abs(input_val - prev_val) > TRILL_BAR_MIN_CHANGE) {
                     if (input_val > prev_val) {
