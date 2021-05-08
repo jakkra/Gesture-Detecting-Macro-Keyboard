@@ -1,7 +1,7 @@
 menu "Gesture Detector Macro Keyboard"
     config RMT_TX_GPIO
         int "RMT TX GPIO"
-        default 16
+        default 21
         help
             Set the GPIO number used for transmitting the RMT signal.
     config STRIP_LED_NUMBER

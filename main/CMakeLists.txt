@@ -10,4 +10,5 @@ idf_component_register(
     keypress_input.c
     crypto.c
     menu.c
+    key_backlight.c
     INCLUDE_DIRS "")
