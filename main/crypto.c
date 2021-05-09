@@ -26,7 +26,6 @@ esp_err_t crypto_get_price(const char* name, double* pOutPriceUsd, double* pOutC
     memset(url, 0, sizeof(url));
 
     snprintf(url, sizeof(url), "http://api.coincap.io/v2/assets/%s", name);
-    printf("GET %s\n", url);
     esp_http_client_config_t config = {
         .url = url,
         .event_handler = http_event_handler,

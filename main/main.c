@@ -44,10 +44,13 @@ static void switch_pressed_callback(keypad_switch_t key);
 static void init_wifi(void);
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void periodic_update_thread(void* arg);
+static void ble_hid_connection_callback(ble_hid_connection event, esp_bd_addr_t* addr);
 
 
 
 bool wifi_connected;
+esp_ip4_addr_t ip_addr;
+esp_bd_addr_t connected_ble_addr;
 
 void app_main(void) {
   esp_err_t ret;
@@ -74,20 +77,23 @@ void app_main(void) {
   ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2c_config));
   ESP_ERROR_CHECK(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
 
-  //ESP_ERROR_CHECK(touch_sensors_init(I2C_PORT, &touch_bar_event_callback));
-  touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
-  //menu_init(I2C_PORT, SDA_PIN, SCL_PIN);
+  ret = ESP_FAIL;
+  for (int retries = 0; retries < 5 && ret != ESP_OK; retries++) {
+    ret = touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
+  }
+
+  menu_init(I2C_PORT, SDA_PIN, SCL_PIN);
 #ifdef TRAINING
   runPrintTrainData();
   // Never returns
   assert(false);
 #endif
-  ble_hid_init();
+  ble_hid_init(ble_hid_connection_callback);
   init_wifi();
 
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
   
-  //xTaskCreate(periodic_update_thread, "periodic_update_thread", 4096, NULL, 10, NULL);
+  xTaskCreate(periodic_update_thread, "periodic_update_thread", 4096, NULL, 10, NULL);
 
   int64_t start = esp_timer_get_time();
   tf_gesture_predictor_run(vertical, sizeof(vertical), &prediction, false);
@@ -182,22 +188,22 @@ static void switch_pressed_callback(keypad_switch_t key)
 
   switch (key) {
     case KEYPAD_SWITCH_1:
-      buf = HID_KEY_1;
+      buf = HID_KEY_A;
       break;
     case KEYPAD_SWITCH_2:
-      buf = HID_KEY_2;
+      buf = HID_KEY_B;
       break;
     case KEYPAD_SWITCH_3:
-      buf = HID_KEY_3;
+      buf = HID_KEY_C;
       break;
     case KEYPAD_SWITCH_4:
-      buf = HID_KEY_4;
+      buf = HID_KEY_D;
       break;
     case KEYPAD_SWITCH_5:
-      buf = HID_KEY_5;
+      buf = HID_KEY_E;
       break;
     case KEYPAD_SWITCH_6:
-      buf = HID_KEY_6;
+      buf = HID_KEY_F;
       menu_next_page();
       break;
     default:
@@ -238,6 +244,19 @@ static void init_wifi(void)
     ESP_LOGI(TAG, "WiFi Started");
 }
 
+static void refresh_menu_connection_data(void) {
+  char ip[50];
+  char addr[50];
+  memset(ip, 0, sizeof(ip));
+  memset(addr, 0, sizeof(addr));
+  snprintf(ip, sizeof(ip), IPSTR, IP2STR(&ip_addr));
+
+  snprintf(addr, sizeof(addr), "%08x%04x",\
+                (connected_ble_addr[0] << 24) + (connected_ble_addr[1] << 16) + (connected_ble_addr[2] << 8) + connected_ble_addr[3],
+                (connected_ble_addr[4] << 8) + connected_ble_addr[5]);
+  menu_draw_connection_status(ip, addr);
+}
+
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -245,11 +264,15 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         ESP_LOGI(TAG, "Failed to connect WiFi");
         wifi_connected = false;
+        memset(&ip_addr, 0, sizeof(ip_addr));
+        refresh_menu_connection_data();
         esp_wifi_connect();
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         wifi_connected = true;
+        ip_addr = event->ip_info.ip;
+        refresh_menu_connection_data();
     }
 }
 
@@ -258,8 +281,22 @@ static void periodic_update_thread(void* arg) {
   for (;;) {
     crypto_get_price("bitcoin", &btc, &btc_change);
     crypto_get_price("dogecoin", &doge, &doge_change);
-    printf("Bitcoin price: %f, change %f, doge %f, change %f\n", btc, doge, btc_change, doge_change);
     menu_draw_crypto(btc, btc_change, doge, doge_change);
     vTaskDelay(pdMS_TO_TICKS(5000));
+  }
+}
+
+static void ble_hid_connection_callback(ble_hid_connection event, esp_bd_addr_t* addr) {
+  switch (event) {
+    case BLE_HID_CONNECTED:
+      memcpy(connected_ble_addr, addr, sizeof(esp_bd_addr_t));
+      refresh_menu_connection_data();
+      break;
+    case BLE_HID_DISCONNECTED:
+      memset(connected_ble_addr, 0, sizeof(esp_bd_addr_t));
+      refresh_menu_connection_data();
+      break;
+    default:
+      break;
   }
 }

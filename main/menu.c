@@ -8,16 +8,16 @@
 #include "tf_gesture_predictor.h"
 
 #define IP_STR_MAX_LEN  15
+#define MAC_STR_MAX_LEN  6 * 2
 #define WORK_QUEUE_SIZE 5
 
 static const char* TAG = "menu";
 
 typedef enum page_t {
-    PAGE_HOME,
     PAGE_CRYPTO,
     PAGE_GESTURE,
     PAGE_CONNECTION,
-    PAGE_LAST = PAGE_CONNECTION
+    PAGE_END
 } page_t;
 
 typedef enum work_t {
@@ -38,6 +38,7 @@ typedef struct menu_data_t {
         bool wifi_connected;
         bool ble_connected;
         char ip[IP_STR_MAX_LEN + 1];
+        char addr[MAC_STR_MAX_LEN + 1];
     } connection;
     page_t current_page;
 } menu_data_t;
@@ -60,7 +61,6 @@ esp_err_t menu_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl){
         assert(work_queue != NULL);
         xTaskCreate(work, "menu_work", 2048, NULL, 10, NULL);
         work_t* task = malloc(sizeof(work_t*));
-        printf("Doing work: %p\n", task);
         xQueueSend(work_queue, (void*)&task, (TickType_t)0);
         initialized = true;
     } else {
@@ -97,12 +97,11 @@ esp_err_t menu_draw_gestures(gesture_prediction_t* prediction) {
     return ret;
 }
 
-esp_err_t menu_draw_connection_status(bool wifi_connected, bool ble_connected, char* wifi_ip){
+esp_err_t menu_draw_connection_status(char* wifi_ip, char* ble_addr) {
     esp_err_t ret = ESP_OK;
     assert(initialized);
-    data.connection.wifi_connected = wifi_connected;
-    data.connection.wifi_connected = ble_connected;
     strncpy(data.connection.ip, wifi_ip, IP_STR_MAX_LEN);
+    strncpy(data.connection.addr, ble_addr, MAC_STR_MAX_LEN);
     if (data.current_page == PAGE_CONNECTION) {
         work_t* task = malloc(sizeof(work_t));
         *task = WORK_REDRAW;
@@ -114,7 +113,7 @@ esp_err_t menu_draw_connection_status(bool wifi_connected, bool ble_connected, c
 esp_err_t menu_next_page(void){
     esp_err_t ret = ESP_OK;
     assert(initialized);
-    data.current_page = (page_t)((data.current_page + 1) % PAGE_LAST);
+    data.current_page = (page_t)((data.current_page + 1) % PAGE_END);
     work_t* task = malloc(sizeof(work_t));
     *task = WORK_REDRAW;
     xQueueSend(work_queue, (void*)&task, (TickType_t)0);
@@ -127,56 +126,51 @@ static void work(void* arg)
 
     for (;;) {
         if (xQueueReceive(work_queue, &work_type, portMAX_DELAY)) {
-            printf("Doing work: %d\n", *work_type);
             free(work_type);
             render_current_page();
         }
     }
 }
 
-static void render_home(void) {
-    display_clear();
-    display_draw_text("HOME", 1);
-}
-
 static void render_crypto(void) {
-    char text[200];
-    memset(text, 0, sizeof(text));
-    display_clear();
-    snprintf(text, sizeof(text), "BTC: %.0f (%.2f%%)", data.crypto.bitcoinPrice, data.crypto.bitcoinChange24h);
-    display_draw_text(text, 1);
+    char line1[100];
+    char line2[100];
+    memset(line1, 0, sizeof(line1));
+    memset(line2, 0, sizeof(line2));
 
-    memset(text, 0, sizeof(text));
-    snprintf(text, sizeof(text), "DOGE: %.2f (%.2f%%)", data.crypto.dogePrice, data.crypto.dogeChange24h);
-    display_draw_text(text, 2);
+    display_clear();
+    snprintf(line1, sizeof(line1), "BTC: %.0f (%.2f%%)", data.crypto.bitcoinPrice, data.crypto.bitcoinChange24h);
+
+    snprintf(line2, sizeof(line2), "DOGE: %.2f (%.2f%%)", data.crypto.dogePrice, data.crypto.dogeChange24h);
+    display_draw_text(line1, line2);
 }
 
 static void render_gesture(void) {
-
-    char text[100];
-    memset(text, 0, sizeof(text));
+    char line1[100];
+    char line2[100];
+    memset(line1, 0, sizeof(line1));
+    memset(line2, 0, sizeof(line2));
 
     display_clear();
-    snprintf(text, sizeof(text), "Probability: %f", data.gesture.prediction.probability);
-    display_draw_text(text, 1);
-
-    memset(text, 0, sizeof(text));
-    snprintf(text, sizeof(text), "%s", tf_gesture_predictor_get_name(data.gesture.prediction.label));
-    display_draw_text(text, 2);
+    snprintf(line1, sizeof(line1), "Probability: %f", data.gesture.prediction.probability);
+    snprintf(line2, sizeof(line2), "%s", tf_gesture_predictor_get_name(data.gesture.prediction.label));
+    display_draw_text(line1, line2);
 }
 
 static void render_connection(void) {
+    char line1[100];
+    char line2[100];
+    memset(line1, 0, sizeof(line1));
+    memset(line2, 0, sizeof(line2));
+
+    snprintf(line1, sizeof(line1), "IP: %s", data.connection.ip);
+    snprintf(line2, sizeof(line2), "BLE: %s", data.connection.addr);
     display_clear();
-    display_draw_text("CONNECTION", 1);
+    display_draw_text(line1, line2);
 }
 
 static void render_current_page(void) {
     switch (data.current_page) {
-        case PAGE_HOME:
-        {
-            render_home();
-            break;
-        }
         case PAGE_CRYPTO:
         {
             render_crypto();
@@ -192,5 +186,7 @@ static void render_current_page(void) {
             render_connection();
             break;
         }
+        default:
+            assert(false);
     }
 }

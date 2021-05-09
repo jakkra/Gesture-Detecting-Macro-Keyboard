@@ -10,12 +10,12 @@
 
 #define NUM_BUTTONS 6
 
-#define KEY_1_PIN   23
-#define KEY_2_PIN   32
-#define KEY_3_PIN   33
-#define KEY_4_PIN   36
-#define KEY_5_PIN   39
-#define KEY_6_PIN   34
+#define KEY_1_PIN   36
+#define KEY_2_PIN   33
+#define KEY_3_PIN   39
+#define KEY_4_PIN   32
+#define KEY_5_PIN   34
+#define KEY_6_PIN   23
 
 #define DEBOUNCE_TIME_MS 50
 
@@ -49,17 +49,18 @@ void keypress_input_init(keypress_callback* callback) {
     xTaskCreate(button_task, "button_task", 2048, NULL, 10, NULL);
 }
 
+// TODO send after release instead, that we we can have both short and long press
 static void button_task(void* arg)
 {
     btn_state_t* button;
     uint32_t current_ms;
 
     for(;;) {
-        if(xQueueReceive(button_evt_queue, &button, portMAX_DELAY)) {
+        if (xQueueReceive(button_evt_queue, &button, portMAX_DELAY)) {
             current_ms = xTaskGetTickCount();
             if (current_ms - button->last_press_ms > DEBOUNCE_TIME_MS) {
+                printf("GPIO[%d] intr, %d key PRESSED\n", button->gpio_num, button->key);
                 button->last_press_ms = current_ms;
-                printf("GPIO[%d] intr, PRESSED\n", button->gpio_num);
                 pressed_callback(button->key);
             }
         }

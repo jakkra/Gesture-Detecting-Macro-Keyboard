@@ -38,6 +38,7 @@
 static uint16_t hid_conn_id = 0;
 static bool sec_conn = false;
 static xSemaphoreHandle sem_handle;
+static hid_connection_callback* connection_callback;
 
 static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param);
 
@@ -94,11 +95,13 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
 		case ESP_HIDD_EVENT_BLE_CONNECT: {
             ESP_LOGI(TAG, "ESP_HIDD_EVENT_BLE_CONNECT");
             hid_conn_id = param->connect.conn_id;
+            connection_callback(BLE_HID_CONNECTED, &param->connect.remote_bda);
             break;
         }
         case ESP_HIDD_EVENT_BLE_DISCONNECT: {
             sec_conn = false;
             ESP_LOGI(TAG, "ESP_HIDD_EVENT_BLE_DISCONNECT");
+            connection_callback(BLE_HID_DISCONNECTED, &param->disconnect.remote_bda);
             esp_ble_gap_start_advertising(&hidd_adv_params);
             break;
         }
@@ -142,16 +145,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     }
 }
 
-void ble_hid_init(void)
-{
+void ble_hid_init(hid_connection_callback* callback) {
     esp_err_t ret;
-
-    ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK( ret );
 
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
@@ -198,6 +193,8 @@ void ble_hid_init(void)
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
+
+    connection_callback = callback;
 
     sem_handle = xSemaphoreCreateBinary();
     assert(sem_handle != NULL);

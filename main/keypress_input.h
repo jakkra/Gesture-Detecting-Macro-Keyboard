@@ -7,6 +7,7 @@ typedef enum keypad_switch_t {
     KEYPAD_SWITCH_4,
     KEYPAD_SWITCH_5,
     KEYPAD_SWITCH_6,
+    KEYPAD_SWITCH_CONFIG
 } keypad_switch_t;
 
 typedef void keypress_callback(keypad_switch_t key);
