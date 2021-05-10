@@ -23,10 +23,12 @@ typedef struct btn_state_t {
     uint32_t gpio_num;
     uint32_t last_press_ms;
     uint8_t key;
+    bool pressed;
 } btn_state_t;
 
 static void configure_gpios(void);
 static void button_task(void* arg);
+static void IRAM_ATTR isr_button_pressed(void* arg);
 
 
 static btn_state_t buttons[NUM_BUTTONS] = {
@@ -49,20 +51,34 @@ void keypress_input_init(keypress_callback* callback) {
     xTaskCreate(button_task, "button_task", 2048, NULL, 10, NULL);
 }
 
-// TODO send after release instead, that we we can have both short and long press
 static void button_task(void* arg)
 {
     btn_state_t* button;
     uint32_t current_ms;
 
-    for(;;) {
+    for (;;) {
         if (xQueueReceive(button_evt_queue, &button, portMAX_DELAY)) {
-            current_ms = xTaskGetTickCount();
-            if (current_ms - button->last_press_ms > DEBOUNCE_TIME_MS) {
-                printf("GPIO[%d] intr, %d key PRESSED\n", button->gpio_num, button->key);
-                button->last_press_ms = current_ms;
-                pressed_callback(button->key);
+            int pressed = gpio_get_level(button->gpio_num);
+            current_ms = esp_timer_get_time() / 1000;
+            if (pressed && !button->pressed) {
+                vTaskDelay(pdMS_TO_TICKS(50));
+                if (gpio_get_level(button->gpio_num)) {
+                    button->last_press_ms = current_ms;
+                    button->pressed = true;
+                } else {
+                    button->pressed = false;
+                    pressed_callback(button->key, false);
+                }
+            } else if (!pressed && button->pressed) {
+                if (current_ms - button->last_press_ms > 2000) {
+                    button->pressed = false;
+                    pressed_callback(button->key, true);
+                } else {
+                    button->pressed = false;
+                    pressed_callback(button->key, false);
+                }
             }
+            gpio_isr_handler_add(button->gpio_num, isr_button_pressed, (void*)button);
         }
     }
 }
@@ -70,6 +86,7 @@ static void button_task(void* arg)
 static void IRAM_ATTR isr_button_pressed(void* arg)
 {
     btn_state_t* button = (btn_state_t*)arg;
+    gpio_isr_handler_remove(button->gpio_num);
     xQueueSendFromISR(button_evt_queue, &button, NULL);
 }
 
@@ -78,7 +95,7 @@ static void configure_gpios(void) {
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_down_en = 1;
     io_conf.pull_up_en = 0;
-    io_conf.intr_type = GPIO_INTR_POSEDGE;
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
 
     for (int i = 0; i < NUM_BUTTONS; i++) {
         io_conf.pin_bit_mask = 1ULL << (buttons[i].gpio_num);

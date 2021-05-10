@@ -40,7 +40,7 @@ static void runPrintTrainData(void);
 #endif
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
-static void switch_pressed_callback(keypad_switch_t key);
+static void switch_pressed_callback(keypad_switch_t key, bool longpress);
 static void init_wifi(void);
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void periodic_update_thread(void* arg);
@@ -182,7 +182,7 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
   }
 }
 
-static void switch_pressed_callback(keypad_switch_t key)
+static void switch_pressed_callback(keypad_switch_t key, bool longpress)
 {
   uint8_t buf;
 
@@ -208,6 +208,10 @@ static void switch_pressed_callback(keypad_switch_t key)
       break;
     default:
       return;
+  }
+
+  if (longpress) {
+    buf += KEYPAD_SWITCH_LAST;
   }
 
   if (ble_hid_request_access(250) == ESP_OK) {
