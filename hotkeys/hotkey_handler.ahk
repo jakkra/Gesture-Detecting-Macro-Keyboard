@@ -9,6 +9,33 @@ winId3 = 0
 winId4 = 0
 winId5 = 0
 
+
+F12::
+Send git fetch
+return
+
+; Swipe vertical
+^!k::  ; Ctrl+Alt+l
+{
+    Send git fetch && git pull origin $(git rev-parse --abbrev-ref HEAD){Enter}
+    return
+}
+
+; Swipe horizontal
+^!l::  ; Ctrl+Alt+l
+{
+    Send git fetch && git pull origin $(git rev-parse --abbrev-ref HEAD){Enter}
+    return
+}
+
+; Swipe v
+^!m::  ; Ctrl+Alt+l
+{
+    Send git fetch && git pull origin $(git rev-parse --abbrev-ref HEAD){Enter}
+    return
+}
+
+
 openIfMinimizedHideIfOpen(winid)
 {
     WinGet, activeWin ,, A
@@ -55,45 +82,47 @@ openIfMinimizedHideIfOpen(winid)
 
 ; Config shortcuts
 ; Shortcut ^!a is configured by ^!f
-; Shortcut ^!b is configured by ^!WinGet
+; Shortcut ^!b is configured by ^!g
 ; etc.
+; So to set the window connected to ^!a you will send ^!f
+; and whatever window in focus will be connected to ^!a.
 
 ^!f::  ; Ctrl+Alt+f
 {
+    SoundBeep, 150, 250
     WinGet, winid ,, A ;
     winId1 = %winid%
-    ;MsgBox, f %winid%
     return
 }
 
 ^!g::  ; Ctrl+Alt+g
 {
+    SoundBeep, 150, 250
     WinGet, winid ,, A ;
     winId2 = %winid%
-    ;MsgBox, g %winid%
     return
 }
 
 ^!h::  ; Ctrl+Alt+h
 {
+    SoundBeep, 150, 250
     WinGet, winid ,, A ;
     winId3 = %winid%
-    ;MsgBox, h %winid%
     return
 }
 
 ^!i::  ; Ctrl+Alt+i
 {
+    SoundBeep, 150, 250
     WinGet, winid ,, A ;
     winId4 = %winid%
-    ;MsgBox, i %winid%
     return
 }
 
 ^!j::  ; Ctrl+Alt+j
 {
+    SoundBeep, 150, 250
     WinGet, winid ,, A ;
     winId5 = %winid%
-    ;MsgBox, j %winid%
     return
 }
