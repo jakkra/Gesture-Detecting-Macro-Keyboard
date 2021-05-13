@@ -34,10 +34,6 @@
 static const char* TAG = "main";
 
 
-//#define TRAINING
-#ifdef TRAINING
-static void runPrintTrainData(void);
-#endif
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
 static void switch_pressed_callback(keypad_switch_t key, bool longpress);
@@ -45,7 +41,7 @@ static void init_wifi(void);
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void periodic_update_thread(void* arg);
 static void ble_hid_connection_callback(ble_hid_connection event, esp_bd_addr_t* addr);
-
+static void runPrintTrainData(void);
 
 
 bool wifi_connected;
@@ -64,7 +60,7 @@ void app_main(void) {
   }
   ESP_ERROR_CHECK(ret);
   key_backlight_init();
-  keypress_input_init(switch_pressed_callback);
+  keypress_input_init();
 
   i2c_config_t i2c_config;
   i2c_config.mode = I2C_MODE_MASTER;
@@ -82,12 +78,15 @@ void app_main(void) {
     ret = touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
   }
 
+  // Holding SWITCH_6 down when booting => enter training mode.
+  if (keypress_input_read(KEYPAD_SWITCH_6)) {
+      printf("Entering training mode\n");
+      runPrintTrainData();
+      // Never returns
+      assert(false);
+  }
+
   menu_init(I2C_PORT, SDA_PIN, SCL_PIN);
-#ifdef TRAINING
-  runPrintTrainData();
-  // Never returns
-  assert(false);
-#endif
   ble_hid_init(ble_hid_connection_callback);
   init_wifi();
 
@@ -113,9 +112,10 @@ void app_main(void) {
       vTaskDelay(pdMS_TO_TICKS(10));
     }
   }
+
+  keypress_input_set_callback(switch_pressed_callback);
 }
 
-#ifdef TRAINING
 static void runPrintTrainData(void) {
   while (true) {
     if (!touch_sensors_touchpad_print_raw()) {
@@ -123,7 +123,6 @@ static void runPrintTrainData(void) {
     }
   }
 }
-#endif
 
 static void sendKeysFromGesture(gesture_label_t prediction)
 {

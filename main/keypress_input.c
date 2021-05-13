@@ -18,6 +18,7 @@
 #define KEY_6_PIN   23
 
 #define DEBOUNCE_TIME_MS 50
+#define LONGPRESS_TIME_MS 2000
 
 typedef struct btn_state_t {
     uint32_t gpio_num;
@@ -41,14 +42,22 @@ static btn_state_t buttons[NUM_BUTTONS] = {
 };
 
 static xQueueHandle button_evt_queue = NULL;
-static keypress_callback* pressed_callback;
+static keypress_callback* pressed_callback = NULL;
 
-void keypress_input_init(keypress_callback* callback) {
-    pressed_callback = callback;
+void keypress_input_init(void) {
     configure_gpios();
+}
+
+void keypress_input_set_callback(keypress_callback* callback) {
+    pressed_callback = callback;
 
     button_evt_queue = xQueueCreate(NUM_BUTTONS, sizeof(uint32_t));
     xTaskCreate(button_task, "button_task", 2048, NULL, 10, NULL);
+}
+
+int keypress_input_read(keypad_switch_t switch_num) {
+    assert(switch_num < NUM_BUTTONS);
+    return gpio_get_level(buttons[(int)switch_num].gpio_num);
 }
 
 static void button_task(void* arg)
@@ -61,7 +70,7 @@ static void button_task(void* arg)
             int pressed = gpio_get_level(button->gpio_num);
             current_ms = esp_timer_get_time() / 1000;
             if (pressed && !button->pressed) {
-                vTaskDelay(pdMS_TO_TICKS(50));
+                vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_TIME_MS));
                 if (gpio_get_level(button->gpio_num)) {
                     button->last_press_ms = current_ms;
                     button->pressed = true;
@@ -70,7 +79,7 @@ static void button_task(void* arg)
                     pressed_callback(button->key, false);
                 }
             } else if (!pressed && button->pressed) {
-                if (current_ms - button->last_press_ms > 2000) {
+                if (current_ms - button->last_press_ms > LONGPRESS_TIME_MS) {
                     button->pressed = false;
                     pressed_callback(button->key, true);
                 } else {
@@ -85,6 +94,9 @@ static void button_task(void* arg)
 
 static void IRAM_ATTR isr_button_pressed(void* arg)
 {
+    if (pressed_callback == NULL) {
+        return;
+    }
     btn_state_t* button = (btn_state_t*)arg;
     gpio_isr_handler_remove(button->gpio_num);
     xQueueSendFromISR(button_evt_queue, &button, NULL);

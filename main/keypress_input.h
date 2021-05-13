@@ -14,4 +14,6 @@ typedef enum keypad_switch_t {
 
 typedef void keypress_callback(keypad_switch_t key, bool longpress);
 
-void keypress_input_init(keypress_callback* callback);
+void keypress_input_init(void);
+void keypress_input_set_callback(keypress_callback* callback);
+int keypress_input_read(keypad_switch_t switch_num);
