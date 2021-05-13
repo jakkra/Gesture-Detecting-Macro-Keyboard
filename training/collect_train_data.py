@@ -70,7 +70,7 @@ if __name__ == "__main__":
                     if len(data) > 20:
                         img = np.zeros((28, 28))
                         for i in range(0, len(data), 2):
-                            img[int(data[i + 1])//64 - 1, int(data[i])//64 - 1] = 1
+                            img[max(0, (int(data[i + 1]) - 1)//64), max(0, (int(data[i])//64) - 1)] = 1
                         plt.imshow(img, interpolation='nearest')
                         plt.show(block=False)
                         plt.pause(0.1)
