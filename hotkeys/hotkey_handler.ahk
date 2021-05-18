@@ -9,11 +9,6 @@ winId3 = 0
 winId4 = 0
 winId5 = 0
 
-
-F12::
-Send git fetch
-return
-
 ; Swipe vertical
 ^!k::  ; Ctrl+Alt+l
 {
