@@ -39,6 +39,7 @@ static uint16_t hid_conn_id = 0;
 static bool sec_conn = false;
 static xSemaphoreHandle sem_handle;
 static hid_connection_callback* connection_callback;
+static bool pairing_enabled = false;
 
 static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param);
 
@@ -118,6 +119,9 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
+    case ESP_GAP_BLE_PASSKEY_REQ_EVT:
+        esp_ble_passkey_reply(param->ble_security.ble_req.bd_addr, false, 0x00);
+        break;
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
         esp_ble_gap_start_advertising(&hidd_adv_params);
         break;
@@ -125,8 +129,12 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
         for(int i = 0; i < ESP_BD_ADDR_LEN; i++) {
              ESP_LOGD(TAG, "%x:",param->ble_security.ble_req.bd_addr[i]);
         }
-        esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
-	 break;
+        if (pairing_enabled) {
+            esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
+        } else {
+            esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, false);
+        }
+	    break;
      case ESP_GAP_BLE_AUTH_CMPL_EVT:
         sec_conn = true;
         esp_bd_addr_t bd_addr;
@@ -136,9 +144,10 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                 (bd_addr[4] << 8) + bd_addr[5]);
         ESP_LOGI(TAG, "address type = %d", param->ble_security.auth_cmpl.addr_type);
         ESP_LOGI(TAG, "pair status = %s",param->ble_security.auth_cmpl.success ? "success" : "fail");
-        if(!param->ble_security.auth_cmpl.success) {
+        if (!param->ble_security.auth_cmpl.success) {
             ESP_LOGE(TAG, "fail reason = 0x%x",param->ble_security.auth_cmpl.fail_reason);
         }
+        ble_hid_set_pairable(false);
         break;
     default:
         break;
@@ -183,8 +192,8 @@ void ble_hid_init(hid_connection_callback* callback) {
     esp_hidd_register_callbacks(hidd_event_callback);
 
     // Secure Connections only.
-    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND | ESP_LE_AUTH_REQ_SC_ONLY |ESP_BLE_ONLY_ACCEPT_SPECIFIED_AUTH_ENABLE; 
-    esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;
+    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND | ESP_LE_AUTH_REQ_SC_ONLY | ESP_BLE_ONLY_ACCEPT_SPECIFIED_AUTH_ENABLE;
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_IN;
     uint8_t key_size = 16;
     uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
@@ -235,7 +244,17 @@ esp_err_t ble_hid_send_consumer_key(consumer_cmd_t key, bool key_pressed)
 
 void ble_hid_set_pairable(bool pairable)
 {
-    // TODO
+    esp_ble_io_cap_t iocap;
+    pairing_enabled = pairable;
+    if (pairable) {
+        iocap = ESP_IO_CAP_NONE;
+    } else {
+        iocap = ESP_IO_CAP_IN;
+    }
+    // A bit hacky, but cannot find any other way to have pairing enabled by a button.
+    // Doing it by using whitelisting (adv_filter_policy) does not work and no way to enable/disable pairing.
+    // When pairing is disabled, set IOCAP to keyboard and just reject the passkey request.
+    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
 }
 
 esp_err_t ble_hid_request_access(uint32_t timeout_ms) {

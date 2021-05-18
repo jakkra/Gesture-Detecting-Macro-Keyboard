@@ -98,6 +98,8 @@ void app_main(void) {
   tf_gesture_predictor_run(vertical, sizeof(vertical), &prediction, false);
   printf("Prediction took %d\n", (int)(esp_timer_get_time() - start) / 1000);
 
+  keypress_input_set_callback(switch_pressed_callback);
+
   while (true) {
     in_matrix = touch_sensors_touchpad_fetch();
     if (in_matrix) {
@@ -112,8 +114,6 @@ void app_main(void) {
       vTaskDelay(pdMS_TO_TICKS(10));
     }
   }
-
-  keypress_input_set_callback(switch_pressed_callback);
 }
 
 static void runPrintTrainData(void) {
@@ -184,6 +184,7 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
 static void switch_pressed_callback(keypad_switch_t key, bool longpress)
 {
   uint8_t buf;
+  bool send_keypress = true;
 
   switch (key) {
     case KEYPAD_SWITCH_1:
@@ -202,8 +203,12 @@ static void switch_pressed_callback(keypad_switch_t key, bool longpress)
       buf = HID_KEY_E;
       break;
     case KEYPAD_SWITCH_6:
-      buf = HID_KEY_F;
-      menu_next_page();
+      if (!longpress) {
+        menu_next_page();
+        send_keypress = false;
+      } else {
+        ble_hid_set_pairable(true);
+      }
       break;
     default:
       return;
@@ -213,11 +218,13 @@ static void switch_pressed_callback(keypad_switch_t key, bool longpress)
     buf += KEYPAD_SWITCH_LAST;
   }
 
-  if (ble_hid_request_access(250) == ESP_OK) {
-    ble_hid_send_key(LEFT_CONTROL_KEY_MASK | LEFT_ALT_KEY_MASK, &buf, 1);
-    vTaskDelay(pdMS_TO_TICKS(20));
-    ble_hid_send_key(0, NULL, 0);
-    ble_hid_give_access();
+  if (send_keypress) {
+    if (ble_hid_request_access(250) == ESP_OK) {
+      ble_hid_send_key(LEFT_CONTROL_KEY_MASK | LEFT_ALT_KEY_MASK, &buf, 1);
+      vTaskDelay(pdMS_TO_TICKS(20));
+      ble_hid_send_key(0, NULL, 0);
+      ble_hid_give_access();
+    }
   }
 }
 
