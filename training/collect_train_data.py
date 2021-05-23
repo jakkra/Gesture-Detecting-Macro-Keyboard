@@ -14,7 +14,7 @@ cwd = os.path.dirname(os.path.realpath(__file__)) + "/train_data/"
 def signal_handler(sig, frame):
     print('Storing dataset...')
     for sample in training_data:
-        f.write('{0}\n'.format(raw_data))
+        f.write('{0}\n'.format(sample))
     f.close()
     print('Stored, exiting.')
     sys.exit(0)

@@ -2,13 +2,13 @@ import tensorflow as tf
 from keras.datasets import mnist
 from keras.utils import to_categorical
 from keras.models import Sequential
+from keras.layers import Input
 from keras.layers import Conv2D
 from keras.layers import MaxPooling2D
 from keras.layers import Dense
 from keras.layers import Flatten
 from keras.optimizers import SGD
 
-import numpy as np
 from matplotlib import pyplot as plt
 import os
 from pathlib import Path
@@ -86,7 +86,8 @@ def load_manual_dataset():
 # define CNN model
 def define_model(num_gestures):
 	model = Sequential()
-	model.add(Conv2D(8, (3, 3), activation='relu', kernel_initializer='he_uniform', input_shape=(28, 28, 1)))
+	model.add(Input(shape=(28, 28, 1)))
+	model.add(Conv2D(8, (3, 3), activation='relu', kernel_initializer='he_uniform'))
 	model.add(MaxPooling2D((2, 2)))
 	model.add(Conv2D(16, (3, 3), activation='relu', kernel_initializer='he_uniform'))
 	model.add(Conv2D(16, (3, 3), activation='relu', kernel_initializer='he_uniform'))
@@ -110,8 +111,11 @@ if __name__ == "__main__":
 
 	# define model
 	model = define_model(len(gesture_map))
+	model.load_weights('good_model_weights.h5')
 	# fit model
 	history = model.fit(trainX, trainY, epochs=100, batch_size=10, verbose=1, validation_data=(testX, testY))
+	model.save_weights('good_model_weights.h5')
+
 	plt.plot(history.history['accuracy'])
 	plt.plot(history.history['val_accuracy'])
 	plt.title('model accuracy')

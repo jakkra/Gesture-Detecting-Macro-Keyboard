@@ -8,19 +8,25 @@ extern const unsigned char gesture_model_tflite_data[];
 
 typedef enum gesture_label_t 
 {
-	LABEL_LINE_DOWN_GESTURE = 0,
-	LABEL_LINE_HORIZONTAL_GESTURE = 1,
-	LABEL_O_GESTURE = 2,
-	LABEL_V_GESTURE = 3,
+	LABEL_ARROW_LEFT = 0,
+	LABEL_ARROW_RIGHT = 1,
+	LABEL_ARROW_UP = 2,
+	LABEL_LINE_DOWN_GESTURE = 3,
+	LABEL_LINE_HORIZONTAL_GESTURE = 4,
+	LABEL_S_GESTURE = 5,
+	LABEL_V_GESTURE = 6,
 	LABEL_END
 } gesture_label_t;
 
 static inline const char* getNameOfPrediction(gesture_label_t prediction)
 {
 	switch (prediction) {
+		case LABEL_ARROW_LEFT: return "LABEL_ARROW_LEFT";
+		case LABEL_ARROW_RIGHT: return "LABEL_ARROW_RIGHT";
+		case LABEL_ARROW_UP: return "LABEL_ARROW_UP";
 		case LABEL_LINE_DOWN_GESTURE: return "LABEL_LINE_DOWN_GESTURE";
 		case LABEL_LINE_HORIZONTAL_GESTURE: return "LABEL_LINE_HORIZONTAL_GESTURE";
-		case LABEL_O_GESTURE: return "LABEL_O_GESTURE";
+		case LABEL_S_GESTURE: return "LABEL_S_GESTURE";
 		case LABEL_V_GESTURE: return "LABEL_V_GESTURE";
 		default: return "UNKNOWN_PREDICTION";
 	}
