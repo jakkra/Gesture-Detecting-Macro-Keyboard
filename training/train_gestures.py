@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
 	# define model
 	model = define_model(len(gesture_map))
-	model.load_weights('good_model_weights.h5')
+	#model.load_weights('good_model_weights.h5')
 	# fit model
 	history = model.fit(trainX, trainY, epochs=100, batch_size=10, verbose=1, validation_data=(testX, testY))
 	model.save_weights('good_model_weights.h5')

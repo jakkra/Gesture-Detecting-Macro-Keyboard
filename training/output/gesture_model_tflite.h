@@ -8,7 +8,7 @@ extern const unsigned char gesture_model_tflite_data[];
 
 typedef enum gesture_label_t 
 {
-	LABEL_ARROW_LEFT = 0,
+	LABEL_C_GESTURE = 0,
 	LABEL_ARROW_RIGHT = 1,
 	LABEL_ARROW_UP = 2,
 	LABEL_LINE_DOWN_GESTURE = 3,
@@ -21,7 +21,7 @@ typedef enum gesture_label_t
 static inline const char* getNameOfPrediction(gesture_label_t prediction)
 {
 	switch (prediction) {
-		case LABEL_ARROW_LEFT: return "LABEL_ARROW_LEFT";
+		case LABEL_C_GESTURE: return "LABEL_C_GESTURE";
 		case LABEL_ARROW_RIGHT: return "LABEL_ARROW_RIGHT";
 		case LABEL_ARROW_UP: return "LABEL_ARROW_UP";
 		case LABEL_LINE_DOWN_GESTURE: return "LABEL_LINE_DOWN_GESTURE";
