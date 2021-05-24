@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from keras.datasets import mnist
 from keras.utils import to_categorical
 from keras.models import Sequential
@@ -100,6 +101,7 @@ def define_model(num_gestures):
 	# compile model
 	opt = SGD(lr=0.001, momentum=0.9) # TODO Experiment with lr if needed, does not look like it right now
 	model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+	print("hello")
 	return model
  
 if __name__ == "__main__":

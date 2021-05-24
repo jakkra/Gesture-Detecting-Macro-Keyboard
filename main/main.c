@@ -137,7 +137,6 @@ static void sendKeysFromGesture(gesture_label_t prediction)
   }
   if (ble_hid_request_access(50) == ESP_OK) {
     ble_hid_send_key(key_mask, keys, num_keys);
-    
     vTaskDelay(pdMS_TO_TICKS(20));
     ble_hid_send_key(0, NULL, 0);
     ble_hid_give_access();
