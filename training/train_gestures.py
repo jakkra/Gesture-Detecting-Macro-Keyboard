@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from keras.datasets import mnist
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 from keras.models import Sequential
 from keras.layers import Input
 from keras.layers import Conv2D
@@ -17,6 +16,46 @@ from pathlib import Path
 train_dir = os.path.dirname(os.path.realpath(__file__)) + "/train_data/"
 output_dir = os.path.dirname(os.path.realpath(__file__)) + "/output/"
 
+def moveToCenter(img):
+    minRow = 100
+    maxRow = -1
+    minCol = 100
+    maxCol = -1
+    for rowcol, val in np.ndenumerate(img):
+        col = rowcol[0]
+        row = rowcol[1]
+        if (val > 0):
+            if (row < minRow):
+                minRow = row
+            if (row > maxRow):
+                maxRow = row
+            
+            if (col < minCol):
+                minCol = col
+            if (col > maxCol):
+                maxCol = col
+
+    diffRow = (maxRow - minRow) // 2
+    diffCol = (maxCol - minCol) // 2
+    centeredImg = np.zeros((28, 28))
+    centeredImg[minCol, minRow] = 1
+    centeredImg[maxCol, maxRow] = 1
+    centeredImg[diffCol + minCol, diffRow + minRow] = 1
+
+    rowOffset = 14 - (diffRow + minRow)
+    colOffset = 14 - (diffCol + minCol)
+
+    movedImg = np.zeros((28, 28))
+
+    for rowcol, val in np.ndenumerate(img):
+        y = rowcol[0]
+        x = rowcol[1]
+        if (img[y, x] > 0):
+            movedImg[min(max(y + colOffset, 0), 27), min(max(x + rowOffset, 0), 27)] = 1
+    
+    return movedImg
+
+
 def create_img_from_line(line):
 	line = line.replace(' ', '')
 	line = line.replace('\'', '')
@@ -26,7 +65,16 @@ def create_img_from_line(line):
 	line = line.split(',')
 	img = np.zeros((28, 28))
 	for i in range(0, len(line), 2):
-		img[int(line[i + 1])//64 - 1, int(line[i])//64 - 1] = 1
+		img[max(0, (int(line[i + 1]) - 1)//64), max(0, (int(line[i])//64) - 1)] = 1
+	
+	# Option to center the gesture in the matrix, this will help when the training data is drawn 
+	# at a specific location on the trackpad. However this will remove functionality to have for example
+	# two line down gestures, one at the right side and one at the left side of the trackpad as this
+	# function will move it to the center.
+	# For this to work the same change is needed on target before inputing the drawn gesture
+	# to the embedded model.
+	#img = moveToCenter(img)
+	
 	img = img.reshape(1, 28, 28, 1)
 	img = img.astype('float32')
 	return img

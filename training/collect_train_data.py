@@ -33,7 +33,6 @@ def console_input_thread(name):
         except KeyboardInterrupt:
             sys.exit(0)
     
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create and store training data')
     parser.add_argument('--port', type=str, required=True, help='COM port')
