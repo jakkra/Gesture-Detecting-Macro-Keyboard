@@ -3,3 +3,4 @@ sdkconfig.old
 .vscode
 sdkconfig
 *.exe
+__pycache__

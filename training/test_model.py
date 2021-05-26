@@ -10,6 +10,8 @@ import tflite_runtime.interpreter as tflite
 import serial
 import argparse
 import os
+import training_utils
+
 
 output_dir = os.path.dirname(os.path.realpath(__file__)) + "/output/"
 
@@ -20,6 +22,7 @@ def load_labels(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create and store training data')
     parser.add_argument('--port', type=str, required=True, help='COM port')
+    parser.add_argument('--center_gesture', type=bool, required=True, help='Move the drawn gesture to the center of the matrix. Need to match if model was trained with centered data or not.')
 
     args = parser.parse_args()
     ser = serial.Serial(args.port, 115200, timeout=1)
@@ -50,6 +53,8 @@ if __name__ == "__main__":
                 img = np.zeros((28, 28))
                 for i in range(0, len(data), 2):
                     img[int(data[i + 1])//64 - 1, int(data[i])//64 - 1] = 1
+                if args.center_gesture:
+                    img = training_utils.moveToCenter(img)
                 plt.imshow(img, interpolation='nearest')
                 plt.show(block=False)
                 plt.pause(1)

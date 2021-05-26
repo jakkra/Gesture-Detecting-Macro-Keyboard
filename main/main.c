@@ -30,9 +30,10 @@
 #define SCL_PIN GPIO_NUM_26
 #define I2C_PORT I2C_NUM_0
 
+#define CENTER_GESTURE      1 // Need to match if the model is trained with centered data or not.
+#define PRINT_GESTURE_DATA  0
 
 static const char* TAG = "main";
-
 
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
@@ -93,9 +94,8 @@ void app_main(void) {
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
   
   xTaskCreate(periodic_update_thread, "periodic_update_thread", 4096, NULL, 10, NULL);
-
   int64_t start = esp_timer_get_time();
-  tf_gesture_predictor_run(vertical, sizeof(vertical), &prediction, false);
+  tf_gesture_predictor_run(v_shape, sizeof(v_shape), &prediction, PRINT_GESTURE_DATA, CENTER_GESTURE);
   printf("Prediction took %d\n", (int)(esp_timer_get_time() - start) / 1000);
 
   keypress_input_set_callback(switch_pressed_callback);
@@ -103,7 +103,7 @@ void app_main(void) {
   while (true) {
     in_matrix = touch_sensors_touchpad_fetch();
     if (in_matrix) {
-      tf_gesture_predictor_run(in_matrix, 28 * 28 * sizeof(float), &prediction, false);
+      tf_gesture_predictor_run(in_matrix, 28 * 28 * sizeof(float), &prediction, PRINT_GESTURE_DATA, CENTER_GESTURE);
 
       if (prediction.probability > 0.95f) {
         sendKeysFromGesture(prediction.label);

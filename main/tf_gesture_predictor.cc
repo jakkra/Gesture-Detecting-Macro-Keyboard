@@ -10,6 +10,7 @@
 
 #include "esp_err.h"
 #include "esp_log.h"
+#include <sys/param.h>
 
 static const char* TAG = "TF_GESTURE_PREDICTOR";
 
@@ -24,6 +25,8 @@ namespace {
   uint8_t tensor_arena[kTensorArenaSize];
   int input_length_bytes;
 }  // namespace
+
+static void print_input_data(float* in);
 
 esp_err_t tf_gesture_predictor_init(void) {
   tflite::InitializeTarget();
@@ -74,23 +77,71 @@ esp_err_t tf_gesture_predictor_init(void) {
   return ESP_OK;
 }
 
-esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_prediction_t *p_result, bool print_input) {
+esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_prediction_t *p_result, bool print_input, bool center_gesture) {
   TfLiteStatus invoke_status;
   float max = 0;
   gesture_label_t label;
 
   assert(data_length == input_length_bytes);
-  
-  memcpy(input, input_data, data_length);
+
   if (print_input) {
-    for (int row = 0; row < 28 * 28; row++) {
-      if (row % 28 == 0) {
-        printf("\n");
-      }
-      printf("%d ", (int)input[row]);
-    }
-    printf("\n");
+    print_input_data(input_data);
   }
+
+  if (!center_gesture) {
+    memcpy(input, input_data, data_length);
+  } else {
+    // Same logic as when training the model to center the gesture in the matrix.
+    memset(input, 0, data_length);
+    int minRow = 100;
+    int maxRow = -1;
+    int minCol = 100;
+    int maxCol = -1;
+    int diffRow = 0;
+    int diffCol = 0;
+    int rowOffset = 0;
+    int colOffset = 0;
+
+    for (int row = 0; row < 28; row++) {
+      for (int col = 0; col < 28; col++) {
+        float val = input_data[row * 28 + col];
+        if (val > 0) {
+          if (row < minRow) {
+            minRow = row;
+          }
+          if (row > maxRow) {
+            maxRow = row;
+          }
+
+          if (col < minCol) {
+            minCol = col;
+          }
+          if (col > maxCol) {
+            maxCol = col;
+          }
+        }
+      }
+    }
+
+    diffRow = (maxRow - minRow) / 2;
+    diffCol = (maxCol - minCol) / 2;
+
+    rowOffset = 14 - (diffRow + minRow);
+    colOffset = 14 - (diffCol + minCol);
+
+    for (int row = 0; row < 28; row++) {
+      for (int col = 0; col < 28; col++) {
+        if (input_data[row * 28 + col] > 0) {
+          input[28 * MIN(MAX(row + rowOffset, 0), 27) + MIN(MAX(col + colOffset, 0), 27)] = 1;
+        }
+      }
+    }
+    
+    if (print_input) {
+      print_input_data(input);
+    }
+  }
+
   invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk) {
     ESP_LOGE(TAG, "Invoke ERROR %d\n", invoke_status);
@@ -116,4 +167,14 @@ esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_p
 
 const char* tf_gesture_predictor_get_name(gesture_label_t label) {
   return getNameOfPrediction(label);
+}
+
+static void print_input_data(float* in) {
+  for (int row = 0; row < 28 * 28; row++) {
+    if (row % 28 == 0) {
+      printf("\n");
+    }
+    printf("%d ", (int)in[row]);
+  }
+  printf("\n");
 }

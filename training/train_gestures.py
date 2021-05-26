@@ -12,51 +12,14 @@ from keras.optimizers import SGD
 from matplotlib import pyplot as plt
 import os
 from pathlib import Path
+import argparse
+import training_utils
 
 train_dir = os.path.dirname(os.path.realpath(__file__)) + "/train_data/"
 output_dir = os.path.dirname(os.path.realpath(__file__)) + "/output/"
 
-def moveToCenter(img):
-    minRow = 100
-    maxRow = -1
-    minCol = 100
-    maxCol = -1
-    for rowcol, val in np.ndenumerate(img):
-        col = rowcol[0]
-        row = rowcol[1]
-        if (val > 0):
-            if (row < minRow):
-                minRow = row
-            if (row > maxRow):
-                maxRow = row
-            
-            if (col < minCol):
-                minCol = col
-            if (col > maxCol):
-                maxCol = col
 
-    diffRow = (maxRow - minRow) // 2
-    diffCol = (maxCol - minCol) // 2
-    centeredImg = np.zeros((28, 28))
-    centeredImg[minCol, minRow] = 1
-    centeredImg[maxCol, maxRow] = 1
-    centeredImg[diffCol + minCol, diffRow + minRow] = 1
-
-    rowOffset = 14 - (diffRow + minRow)
-    colOffset = 14 - (diffCol + minCol)
-
-    movedImg = np.zeros((28, 28))
-
-    for rowcol, val in np.ndenumerate(img):
-        y = rowcol[0]
-        x = rowcol[1]
-        if (img[y, x] > 0):
-            movedImg[min(max(y + colOffset, 0), 27), min(max(x + rowOffset, 0), 27)] = 1
-    
-    return movedImg
-
-
-def create_img_from_line(line):
+def create_img_from_line(line, center_gesture):
 	line = line.replace(' ', '')
 	line = line.replace('\'', '')
 	line = line.replace('[', '')
@@ -73,13 +36,14 @@ def create_img_from_line(line):
 	# function will move it to the center.
 	# For this to work the same change is needed on target before inputing the drawn gesture
 	# to the embedded model.
-	#img = moveToCenter(img)
+	if center_gesture:
+		img = training_utils.moveToCenter(img)
 	
 	img = img.reshape(1, 28, 28, 1)
 	img = img.astype('float32')
 	return img
 
-def load_manual_dataset():
+def load_manual_dataset(center_gesture):
 	files = os.listdir(train_dir)
 	num_gestures = len(files) / 2
 	print("Found files {0} => {1} gestures".format(files, num_gestures))
@@ -104,7 +68,7 @@ def load_manual_dataset():
 			train_lines = train_file.readlines()
 
 			for line in train_lines:
-				trainX.append(create_img_from_line(line))
+				trainX.append(create_img_from_line(line, center_gesture))
 				trainY.append(gesture_id)
 
 		elif file_name.endswith('.test'):
@@ -112,7 +76,7 @@ def load_manual_dataset():
 			test_lines = test_file.readlines()
 
 			for line in test_lines:
-				testX.append(create_img_from_line(line))
+				testX.append(create_img_from_line(line, center_gesture))
 				testY.append(gesture_id)
 		
 	trainX = np.array(trainX)
@@ -153,10 +117,14 @@ def define_model(num_gestures):
 	return model
  
 if __name__ == "__main__":
+	parser = argparse.ArgumentParser(description='Create and store training data')
+	parser.add_argument('--center_gesture', type=bool, required=True, help='Move the drawn gesture to the center of the matrix. Need to match if model was trained with centered data or not.')
+
+	args = parser.parse_args()
 	# Create folder for the generated files
 	Path(output_dir).mkdir(parents=True, exist_ok=True)
 	print('create', output_dir)
-	trainX, trainY, testX, testY, gesture_map = load_manual_dataset()
+	trainX, trainY, testX, testY, gesture_map = load_manual_dataset(args.center_gesture)
 	print('Loaded train data shape is {0} and test data shape is {1}'.format(trainX.shape, testX.shape))
 
 	# define model
