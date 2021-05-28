@@ -77,7 +77,7 @@ esp_err_t tf_gesture_predictor_init(void) {
   return ESP_OK;
 }
 
-esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_prediction_t *p_result, bool print_input, bool center_gesture) {
+esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_prediction_t *p_result, bool print_input) {
   TfLiteStatus invoke_status;
   float max = 0;
   gesture_label_t label;
@@ -87,60 +87,60 @@ esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_p
   if (print_input) {
     print_input_data(input_data);
   }
+#ifdef MODEL_CENTER_GESTURE_IN_DATA
+  // Same logic as when training the model to center the gesture in the matrix.
+  memset(input, 0, data_length);
+  int minRow = 100;
+  int maxRow = -1;
+  int minCol = 100;
+  int maxCol = -1;
+  int diffRow = 0;
+  int diffCol = 0;
+  int rowOffset = 0;
+  int colOffset = 0;
 
-  if (!center_gesture) {
-    memcpy(input, input_data, data_length);
-  } else {
-    // Same logic as when training the model to center the gesture in the matrix.
-    memset(input, 0, data_length);
-    int minRow = 100;
-    int maxRow = -1;
-    int minCol = 100;
-    int maxCol = -1;
-    int diffRow = 0;
-    int diffCol = 0;
-    int rowOffset = 0;
-    int colOffset = 0;
+  for (int row = 0; row < 28; row++) {
+    for (int col = 0; col < 28; col++) {
+      float val = input_data[row * 28 + col];
+      if (val > 0) {
+        if (row < minRow) {
+          minRow = row;
+        }
+        if (row > maxRow) {
+          maxRow = row;
+        }
 
-    for (int row = 0; row < 28; row++) {
-      for (int col = 0; col < 28; col++) {
-        float val = input_data[row * 28 + col];
-        if (val > 0) {
-          if (row < minRow) {
-            minRow = row;
-          }
-          if (row > maxRow) {
-            maxRow = row;
-          }
-
-          if (col < minCol) {
-            minCol = col;
-          }
-          if (col > maxCol) {
-            maxCol = col;
-          }
+        if (col < minCol) {
+          minCol = col;
+        }
+        if (col > maxCol) {
+          maxCol = col;
         }
       }
-    }
-
-    diffRow = (maxRow - minRow) / 2;
-    diffCol = (maxCol - minCol) / 2;
-
-    rowOffset = 14 - (diffRow + minRow);
-    colOffset = 14 - (diffCol + minCol);
-
-    for (int row = 0; row < 28; row++) {
-      for (int col = 0; col < 28; col++) {
-        if (input_data[row * 28 + col] > 0) {
-          input[28 * MIN(MAX(row + rowOffset, 0), 27) + MIN(MAX(col + colOffset, 0), 27)] = 1;
-        }
-      }
-    }
-    
-    if (print_input) {
-      print_input_data(input);
     }
   }
+
+  diffRow = (maxRow - minRow) / 2;
+  diffCol = (maxCol - minCol) / 2;
+
+  rowOffset = 14 - (diffRow + minRow);
+  colOffset = 14 - (diffCol + minCol);
+
+  for (int row = 0; row < 28; row++) {
+    for (int col = 0; col < 28; col++) {
+      if (input_data[row * 28 + col] > 0) {
+        input[28 * MIN(MAX(row + rowOffset, 0), 27) + MIN(MAX(col + colOffset, 0), 27)] = 1;
+      }
+    }
+  }
+  
+  if (print_input) {
+    print_input_data(input);
+  }
+  
+#else
+  memcpy(input, input_data, data_length);
+#endif
 
   invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk) {

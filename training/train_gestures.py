@@ -118,8 +118,8 @@ def define_model(num_gestures):
  
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Create and store training data')
-	parser.add_argument('--center_gesture', type=bool, required=True, help='Move the drawn gesture to the center of the matrix. Need to match if model was trained with centered data or not.')
-
+	parser.add_argument('--center_gesture', required=False, action='store_true', help='Move the drawn gesture to the center of the matrix. Need to match if model was trained with centered data or not.')
+	
 	args = parser.parse_args()
 	# Create folder for the generated files
 	Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 	model = define_model(len(gesture_map))
 	#model.load_weights('good_model_weights.h5')
 	# fit model
-	history = model.fit(trainX, trainY, epochs=100, batch_size=10, verbose=1, validation_data=(testX, testY))
+	history = model.fit(trainX, trainY, epochs=10, batch_size=10, verbose=1, validation_data=(testX, testY))
 	model.save_weights('good_model_weights.h5')
 
 	plt.plot(history.history['accuracy'])
@@ -179,6 +179,9 @@ if __name__ == "__main__":
 		f.write('/*\nThis is a automatically generated TensorFlow Lite model by train_gestures.py, see README.md for more info.\nIt is converted into a C data array using xxd and is defined in gesture_model_tflite.cc\n*/\n')
 		f.write('#ifndef TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
 		f.write('#define TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
+		if (args.center_gesture):
+			f.write('\n#define MODEL_CENTER_GESTURE_IN_DATA\n\n')
+
 		f.write('extern const unsigned char gesture_model_tflite_data[];\n')
 
 		f.write('\ntypedef enum gesture_label_t \n{\n')

@@ -4,6 +4,9 @@ It is converted into a C data array using xxd and is defined in gesture_model_tf
 */
 #ifndef TENSORFLOW_LITE_GESTURE_MODEL_H_
 #define TENSORFLOW_LITE_GESTURE_MODEL_H_
+
+#define MODEL_CENTER_GESTURE_IN_DATA
+
 extern const unsigned char gesture_model_tflite_data[];
 
 typedef enum gesture_label_t 
