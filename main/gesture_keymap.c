@@ -13,7 +13,7 @@ esp_err_t gesture_keymap_get_keys(gesture_label_t gesture, key_mask_t* special_k
         case LABEL_LINE_HORIZONTAL_GESTURE:
             keys[0] = HID_KEY_L;
             break;
-        case LABEL_V_GESTURE:
+        case LABEL_ARROW_DOWN:
             keys[0] = HID_KEY_M;
             break;
         case LABEL_ARROW_UP:

@@ -9,7 +9,7 @@ winId3 = 0
 winId4 = 0
 winId5 = 0
 
-; Swipe vertical
+; Swipe horizontal
 ^!k::  ; Ctrl+Alt+k
 {
     WinActivate ahk_id %winId2Git%
@@ -17,11 +17,9 @@ winId5 = 0
     return
 }
 
-; Swipe horizontal
+; Swipe vertical
 ^!l::  ; Ctrl+Alt+l
 {
-    WinActivate ahk_id %winId2Git%
-    Send git status{Enter}
     return
 }
 
@@ -58,10 +56,10 @@ winId5 = 0
 ; Swipe S
 ^!q::  ; Ctrl+Alt+q
 {
-    
+    WinActivate ahk_id %winId2Git%
+    Send git status{Enter}
     return
 }
-
 
 openIfMinimizedHideIfOpen(winid)
 {

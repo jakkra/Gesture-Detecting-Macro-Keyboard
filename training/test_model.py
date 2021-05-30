@@ -65,14 +65,14 @@ if __name__ == "__main__":
                 # Load the labels so we can display more friendly result
                 labels = load_labels(output_dir + 'labels.txt')
 
-                # Run both TF and RF Lite so we can see that convertion was OK
+                # Run both TF and TF Lite so we can see that convertion was OK
                 # Show result from TensorFlow model
-                print("TensorFlow Model:")
+                #print("TensorFlow Model:")
 
-                results = model.predict(img)[0]
-                top_k = results.argsort()[-5:][::-1]
-                for i in top_k:
-                    print('{:08.6f}: {}'.format(float(results[i]), labels[i]))
+                #results = model.predict(img)[0]
+                #top_k = results.argsort()[-5:][::-1]
+                #for i in top_k:
+                #    print('{:08.6f}: {}'.format(float(results[i]), labels[i]))
 
                 # Show result from TensorFlow Lite model
                 print("TensorFlow Model Lite:")
