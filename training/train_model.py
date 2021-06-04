@@ -105,15 +105,12 @@ def define_model(num_gestures):
 	model.add(Conv2D(16, (3, 3), activation='relu', kernel_initializer='he_uniform'))
 	model.add(Conv2D(16, (3, 3), activation='relu', kernel_initializer='he_uniform'))
 	model.add(MaxPooling2D((2, 2)))
-	#tf.keras.layers.Dropout(0.1) # Dropout may help with performance, but seems ok without so skip for now.
 	model.add(Flatten())
 	model.add(Dense(16, activation='relu', kernel_initializer='he_uniform'))
-	#tf.keras.layers.Dropout(0.1)
 	model.add(Dense(num_gestures, activation='softmax'))
 	# compile model
 	opt = SGD(lr=0.001, momentum=0.9) # TODO Experiment with lr if needed, does not look like it right now
 	model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
-	print("hello")
 	return model
  
 if __name__ == "__main__":
@@ -167,10 +164,10 @@ if __name__ == "__main__":
 	cppModelFileContentLines = []
 	with open(output_dir + 'gesture_model_tflite.cc', 'r') as f:
 		cppModelFileContentLines = f.readlines()
-	os.remove(output_dir + 'gesture_model_tflite.cc')
-	cppModelFileContentLines[0] = 'const unsigned char gesture_model_tflite_data[] = {\n'
+	os.remove(output_dir + 'gesture_model_tflite.cc') # Remove original c++ model
+	cppModelFileContentLines[0] = 'const unsigned char gesture_model_tflite_data[] = {\n' # rename the large byte array containing the model
 	cppModelFileContentLines.insert(0, '#include "gesture_model_tflite.h"\n')
-	with open(output_dir + 'gesture_model_tflite.cc', 'w') as f:
+	with open(output_dir + 'gesture_model_tflite.cc', 'w') as f: # create the fixed c++ model
 		f.writelines(cppModelFileContentLines)
 	
 	# Create header file to access generated model
@@ -179,11 +176,14 @@ if __name__ == "__main__":
 		f.write('/*\nThis is a automatically generated TensorFlow Lite model by train_model.py, see README.md for more info.\nIt is converted into a C data array using xxd and is defined in gesture_model_tflite.cc\n*/\n')
 		f.write('#ifndef TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
 		f.write('#define TENSORFLOW_LITE_GESTURE_MODEL_H_\n')
+
+		# Add define so c code can automatically handle if model was trained with --center_gesture or not
 		if (args.center_gesture):
 			f.write('\n#define MODEL_CENTER_GESTURE_IN_DATA\n\n')
 
 		f.write('extern const unsigned char gesture_model_tflite_data[];\n')
 
+		# Generate enum with all labels
 		f.write('\ntypedef enum gesture_label_t \n{\n')
 		for idx, key in enumerate(gesture_map.keys()):
 			f.write('\tLABEL_{0} = {1},\n'.format(key.upper(), idx))
@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
 		f.write('\n')
 
-		# Generate prediction to string
+		# Generate prediction enum to string
 		f.write('static inline const char* getNameOfPrediction(gesture_label_t prediction)\n')
 		f.write('{\n\tswitch (prediction) {\n')
 		for idx, key in enumerate(gesture_map.keys()):
