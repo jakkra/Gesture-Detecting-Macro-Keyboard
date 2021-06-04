@@ -20,6 +20,8 @@ winId5 = 0
 ; Swipe vertical
 ^!l::  ; Ctrl+Alt+l
 {
+    WinActivate ahk_id %winId2Git%
+    Send git diff{Enter}
     return
 }
 

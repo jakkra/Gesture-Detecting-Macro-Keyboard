@@ -11,6 +11,7 @@ tldr; Glorified Bluetooth macro keyboard with machine learning (TensorFlow Lite 
 
 ![training](.github/day.jpg)
 ![training](.github/rgb.jpg )
+![training](.github/demo.gif)
 
 ### How it works
 The switches presses and the touchpad gestures will end up being sent as a keyboard shortcut. This CAN be enough for some use cases, but it gets really powerful when coupled together with something AutoHotkey scripts running on the computer.
@@ -22,13 +23,13 @@ On the computer focus one window and then hold down one of SWITCH_1-5 for 2s. Th
 **Gestures are mapped as following right now**
 | Gesture        | Action | How to remember
 | ------------- |:-------------|:-------------| 
-|ARROW_RIGHT | Media key next track | As in next
-|ARROW_UP | git push current branch | Up as in away/push
-|C_GESTURE | Display all the COM ports on the computer as a notification | C as in COM Port
+|ARROW_RIGHT | Media key next track | > as in next
+|ARROW_UP | git push current branch | ʌ as in away/push
+|C_GESTURE | Display all the COM ports on the computer as a notification | 'C' as in COM Port
 |LINE_DOWN_GESTURE | git log | 'l' as in log
-|LINE_HORIZONTAL_GESTURE | TBD | 
-|S_GESTURE | git status | 's' as in status
-|ARROW_DOWN | git fetch and git pull current branch | Arrow down as in pull
+|LINE_HORIZONTAL_GESTURE | git diff | 
+|S_GESTURE | git status | 'S' as in status
+|ARROW_DOWN | git fetch and git pull current branch | 'V' as in pull
 
 Note the commands involving git above will also focus the git terminal window before executing the action. For this to work SWITCH_2 is expected to be mapped with a git terminal window. For more detailed info about the actions look in 
 [`hotkeys/hotkey_handler.ahk`](hotkeys/hotkey_handler.ahk)
