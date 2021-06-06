@@ -1,5 +1,2 @@
-components/tfmicro linguist-vendored
-*/gesture_model_tflite.cc linguist-generated
-*/gesture_model_tflite.cc linguist-vendored
-gesture_model_tflite.cc linguist-vendored
-components/* linguist-vendored
+**/components/** linguist-vendored
+**/gesture_model_tflite.cc linguist-generated
