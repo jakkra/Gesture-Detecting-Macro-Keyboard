@@ -11,7 +11,7 @@
 #include "touchpad_sensor.h"
 #include "ble_hid.h"
 #include "hid_dev.h"
-#include "gesture_keymap.h"
+#include "keymap_config.h"
 #include "hid_dev.h"
 #include "menu.h"
 #include "keypress_input.h"
@@ -131,7 +131,7 @@ static void sendKeysFromGesture(gesture_label_t prediction)
   uint8_t num_keys;
   uint8_t keys[GESTURE_MAP_MAX_KEYS];
 
-  err = gesture_keymap_get_keys(prediction, &key_mask, keys, &num_keys);
+  err = keymap_config_gesture_get_keys(prediction, &key_mask, keys, &num_keys);
   if (err) {
     return;
   }
@@ -143,29 +143,20 @@ static void sendKeysFromGesture(gesture_label_t prediction)
   }
 }
 
-
-
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
 {
   consumer_cmd_t key = 0;
 
   switch (state) {
     case TOUCH_BAR_TOUCH_START:
-      printf("TOUCH_BAR_TOUCH_START\n");
+    case TOUCH_BAR_TOUCHED_IDLE:
+    case TOUCH_BAR_TOUCH_END:
       break;
     case TOUCH_BAR_MOVING_UP:
-      printf("TOUCH_BAR_MOVING_UP\n");
       key = HID_CONSUMER_VOLUME_UP;
       break;
     case TOUCH_BAR_MOVING_DOWN:
-      printf("TOUCH_BAR_MOVING_DOWN\n");
       key = HID_CONSUMER_VOLUME_DOWN;
-      break;
-    case TOUCH_BAR_TOUCHED_IDLE:
-      printf("TOUCH_BAR_TOUCHED_IDLE\n");
-      break;
-    case TOUCH_BAR_TOUCH_END:
-      printf("TOUCH_BAR_END\n");
       break;
     default:
       break;
@@ -182,29 +173,22 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
 
 static void switch_pressed_callback(keypad_switch_t key, bool longpress)
 {
-  uint8_t buf;
-  bool send_keypress = true;
+  esp_err_t err = ESP_FAIL;
+  key_mask_t key_mask;
+  uint8_t num_keys;
+  uint8_t keys[GESTURE_MAP_MAX_KEYS];
 
   switch (key) {
     case KEYPAD_SWITCH_1:
-      buf = HID_KEY_A;
-      break;
     case KEYPAD_SWITCH_2:
-      buf = HID_KEY_B;
-      break;
     case KEYPAD_SWITCH_3:
-      buf = HID_KEY_C;
-      break;
     case KEYPAD_SWITCH_4:
-      buf = HID_KEY_D;
-      break;
     case KEYPAD_SWITCH_5:
-      buf = HID_KEY_E;
+      err = keymap_config_switch_get_keys(key, longpress, &key_mask, keys, &num_keys);
       break;
     case KEYPAD_SWITCH_6:
       if (!longpress) {
         menu_next_page();
-        send_keypress = false;
       } else {
         ble_hid_set_pairable(true);
       }
@@ -213,14 +197,10 @@ static void switch_pressed_callback(keypad_switch_t key, bool longpress)
       return;
   }
 
-  if (longpress) {
-    buf += KEYPAD_SWITCH_LAST;
-  }
-
-  if (send_keypress) {
+  if (err == ESP_OK) {
     if (ble_hid_request_access(250) == ESP_OK) {
-      ble_hid_send_key(LEFT_CONTROL_KEY_MASK | LEFT_ALT_KEY_MASK, &buf, 1);
-      vTaskDelay(pdMS_TO_TICKS(20));
+      ble_hid_send_key(key_mask, keys, num_keys);
+      vTaskDelay(pdMS_TO_TICKS(30));
       ble_hid_send_key(0, NULL, 0);
       ble_hid_give_access();
     }

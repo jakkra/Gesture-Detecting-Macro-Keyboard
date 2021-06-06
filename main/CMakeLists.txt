@@ -5,7 +5,7 @@ idf_component_register(
     gesture_model_tflite.cc
     touchpad_sensor.cc
     ble_hid.c
-    gesture_keymap.c
+    keymap_config.c
     display.c
     keypress_input.c
     crypto.c
