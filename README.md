@@ -14,7 +14,7 @@ tldr; Glorified Bluetooth macro keyboard with machine learning (TensorFlow Lite 
 ![training](.github/demo.gif)
 
 ### How it works
-The switches presses and the touchpad gestures will end up being sent as a keyboard shortcut. This CAN be enough for some use cases, but it gets really powerful when coupled together with something AutoHotkey scripts running on the computer.
+The switch presses and the touchpad gestures will end up being sent as a keyboard shortcut. This CAN be enough for some use cases, but it gets really powerful when coupled together with something AutoHotkey scripts running on the computer.
 
 **Current AutoHotkey script works as following**
 
