@@ -2,6 +2,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 #include "esp_timer.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -22,8 +23,6 @@
 #include "crypto.h"
 #include "key_backlight.h"
 
-#include "horizontal.h"
-#include "vertical.h"
 #include "v.h"
 
 #define SDA_PIN GPIO_NUM_25
@@ -43,16 +42,19 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 static void periodic_update_thread(void* arg);
 static void ble_hid_connection_callback(ble_hid_connection event, esp_bd_addr_t* addr);
 static void runPrintTrainData(void);
+static void disable_pairing_cb(TimerHandle_t xTimer);
 
 
-bool wifi_connected;
-esp_ip4_addr_t ip_addr;
-esp_bd_addr_t connected_ble_addr;
+static bool wifi_connected;
+static esp_ip4_addr_t ip_addr;
+static esp_bd_addr_t connected_ble_addr;
+static  TimerHandle_t pairing_timer;
 
 void app_main(void) {
   esp_err_t ret;
   float* in_matrix;
   gesture_prediction_t prediction;
+  i2c_config_t i2c_config;
 
   ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -60,10 +62,10 @@ void app_main(void) {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
+
   key_backlight_init();
   keypress_input_init();
 
-  i2c_config_t i2c_config;
   i2c_config.mode = I2C_MODE_MASTER;
   i2c_config.sda_io_num = SDA_PIN;
   i2c_config.sda_pullup_en = GPIO_PULLUP_ENABLE;
@@ -89,6 +91,7 @@ void app_main(void) {
 
   menu_init(I2C_PORT, SDA_PIN, SCL_PIN);
   ble_hid_init(ble_hid_connection_callback);
+  pairing_timer = xTimerCreate("BLE Pair Timeout", pdMS_TO_TICKS(30000), pdFALSE, (void*)0, disable_pairing_cb);
   init_wifi();
 
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
@@ -171,6 +174,12 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
   }
 }
 
+static void disable_pairing_cb(TimerHandle_t xTimer)
+{
+  ble_hid_set_pairable(false);
+  ESP_LOGD(TAG, "Disabled pairing after timeout");
+}
+
 static void switch_pressed_callback(keypad_switch_t key, bool longpress)
 {
   esp_err_t err = ESP_FAIL;
@@ -190,7 +199,10 @@ static void switch_pressed_callback(keypad_switch_t key, bool longpress)
       if (!longpress) {
         menu_next_page();
       } else {
+        xTimerStop(pairing_timer, portMAX_DELAY);
+        xTimerStart(pairing_timer, portMAX_DELAY);
         ble_hid_set_pairable(true);
+        ESP_LOGI(TAG, "BLE pairing enabled for 30s");
       }
       break;
     default:
@@ -268,9 +280,11 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 static void periodic_update_thread(void* arg) {
   double btc, doge, btc_change, doge_change;
   for (;;) {
-    crypto_get_price("bitcoin", &btc, &btc_change);
-    crypto_get_price("dogecoin", &doge, &doge_change);
-    menu_draw_crypto(btc, btc_change, doge, doge_change);
+    if (wifi_connected) {
+      crypto_get_price("bitcoin", &btc, &btc_change);
+      crypto_get_price("dogecoin", &doge, &doge_change);
+      menu_draw_crypto(btc, btc_change, doge, doge_change);
+    }
     vTaskDelay(pdMS_TO_TICKS(5000));
   }
 }
