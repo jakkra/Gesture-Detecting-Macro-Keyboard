@@ -22,7 +22,7 @@ def load_labels(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create and store training data')
     parser.add_argument('--port', type=str, required=True, help='COM port')
-    parser.add_argument('--center_gesture', type=bool, required=True, help='Move the drawn gesture to the center of the matrix. Need to match if model was trained with centered data or not.')
+    parser.add_argument('--center_gesture', action='store_true',  help='Move the drawn gesture to the center of the matrix. Need to match if model was trained with centered data or not.')
 
     args = parser.parse_args()
     ser = serial.Serial(args.port, 115200, timeout=1)
