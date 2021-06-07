@@ -96,7 +96,7 @@ void app_main(void) {
   xTaskCreate(periodic_update_thread, "periodic_update_thread", 4096, NULL, 10, NULL);
   int64_t start = esp_timer_get_time();
   tf_gesture_predictor_run(v_shape, sizeof(v_shape), &prediction, PRINT_GESTURE_DATA);
-  printf("Prediction took %d\n", (int)(esp_timer_get_time() - start) / 1000);
+  printf("Prediction took %dms\n", (int)(esp_timer_get_time() - start) / 1000);
 
   keypress_input_set_callback(switch_pressed_callback);
 

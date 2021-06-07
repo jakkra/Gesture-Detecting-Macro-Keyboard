@@ -12,9 +12,6 @@
 #define MAX_LOCAL_COORDINATE    28
 #define DIVIDER_FACTOR          (MAX_TRILL_COORDINATE / MAX_LOCAL_COORDINATE) // 64
 
-#define SDA_PIN GPIO_NUM_21
-#define SCL_PIN GPIO_NUM_22
-
 #define SAMPLE_DELAY 2
 #define TRILL_BAR_READ_INTERVAL_MS 50
 #define TRILL_BAR_MIN_INPUT_VAL 1408
@@ -22,7 +19,6 @@
 
 static const char* TAG = "touchpad_sensor";
 
-static void touch_bar_task(void* params);
 
 static float input[MAX_LOCAL_COORDINATE][MAX_LOCAL_COORDINATE];
 static Trill trillSquare;
@@ -32,6 +28,7 @@ static i2c_port_t i2c_port;
 
 esp_err_t touch_sensors_init(touch_bar_callback* touch_bar_callback);
 float* touch_sensors_touchpad_fetch(void);
+static void touch_bar_task(void* params);
 
 esp_err_t touch_sensors_init(i2c_port_t port, touch_bar_callback* touch_bar_callback)
 {
@@ -91,8 +88,6 @@ float* touch_sensors_touchpad_fetch(void)
     return NULL;
 }
 
-
-
 bool touch_sensors_touchpad_print_raw(void)
 {
     bool touchActive = false;
@@ -151,7 +146,7 @@ static void touch_bar_task(void* params)
                     touchActive = true;
                     prev_val = input_val;
                 }
-                    bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
+                bar_event_callback(TOUCH_BAR_TOUCH_START, input_val);
             } else {
                 if (abs(input_val - prev_val) > TRILL_BAR_MIN_CHANGE) {
                     if (input_val > prev_val) {

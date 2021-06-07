@@ -7,9 +7,10 @@
 #include "esp_log.h"
 #include "tf_gesture_predictor.h"
 
-#define IP_STR_MAX_LEN  15
-#define MAC_STR_MAX_LEN  6 * 2
-#define WORK_QUEUE_SIZE 5
+#define IP_STR_MAX_LEN      15
+#define MAC_STR_MAX_LEN     6 * 2
+#define WORK_QUEUE_SIZE     5
+#define MAX_LINE_LENGTH     100
 
 static const char* TAG = "menu";
 
@@ -133,8 +134,8 @@ static void work(void* arg)
 }
 
 static void render_crypto(void) {
-    char line1[100];
-    char line2[100];
+    char line1[MAX_LINE_LENGTH];
+    char line2[MAX_LINE_LENGTH];
     memset(line1, 0, sizeof(line1));
     memset(line2, 0, sizeof(line2));
 
@@ -146,8 +147,8 @@ static void render_crypto(void) {
 }
 
 static void render_gesture(void) {
-    char line1[100];
-    char line2[100];
+    char line1[MAX_LINE_LENGTH];
+    char line2[MAX_LINE_LENGTH];
     memset(line1, 0, sizeof(line1));
     memset(line2, 0, sizeof(line2));
 
@@ -158,8 +159,8 @@ static void render_gesture(void) {
 }
 
 static void render_connection(void) {
-    char line1[100];
-    char line2[100];
+    char line1[MAX_LINE_LENGTH];
+    char line2[MAX_LINE_LENGTH];
     memset(line1, 0, sizeof(line1));
     memset(line2, 0, sizeof(line2));
 

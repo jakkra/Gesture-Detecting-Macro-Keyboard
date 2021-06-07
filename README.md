@@ -30,6 +30,7 @@ On the computer focus one window and then hold down one of SWITCH_1-5 for 2s. Th
 |LINE_HORIZONTAL_GESTURE | git diff | 
 |S_GESTURE | git status | 'S' as in status
 |ARROW_DOWN | git fetch and git pull current branch | 'V' as in pull
+|... | whatever | ...
 
 Note the commands involving git above will also focus the git terminal window before executing the action. For this to work SWITCH_2 is expected to be mapped with a git terminal window. For more detailed info about the actions look in 
 [`hotkeys/hotkey_handler.ahk`](hotkeys/hotkey_handler.ahk)
@@ -66,7 +67,7 @@ Option to center the gesture in the input matrix, this will help when the traini
 ![training](.github/training.png)
 
 ### Testing/verifying the model
-Before moving the model into the microcontroller it's a good idea to test it first. First make sure the device is in training mode as described before, then test the model by running `python test_model.py --port COMX --center_gesture` and watch the predictions show as you draw in the trackpad.
+Before moving the model into the microcontroller it's a good idea to test it first. First make sure the device is in training mode as described before, then test the model by running `python test_model.py --port COMX --center_gesture` and watch the predictions show as you draw on the trackpad.
 
 ## AutoHotkey setup
 - Install Auto Hotkey from https://www.autohotkey.com/
