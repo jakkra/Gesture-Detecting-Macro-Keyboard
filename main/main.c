@@ -22,11 +22,13 @@
 #include "lwip/sys.h"
 #include "crypto.h"
 #include "key_backlight.h"
+#include "sdkconfig.h"
 
 #include "v.h"
 
-#define SDA_PIN GPIO_NUM_25
-#define SCL_PIN GPIO_NUM_26
+#define SDA_PIN GPIO_NUM_4
+#define SCL_PIN GPIO_NUM_15
+#define OLED_RST_PIN GPIO_NUM_16
 #define I2C_PORT I2C_NUM_0
 
 #define CENTER_GESTURE      1 // Need to match if the model is trained with centered data or not.
@@ -67,9 +69,9 @@ void app_main(void) {
   keypress_input_init();
 
   i2c_config.mode = I2C_MODE_MASTER;
-  i2c_config.sda_io_num = SDA_PIN;
+  i2c_config.sda_io_num = CONFIG_I2C_SDA_PIN;
   i2c_config.sda_pullup_en = GPIO_PULLUP_ENABLE;
-  i2c_config.scl_io_num = SCL_PIN;
+  i2c_config.scl_io_num = CONFIG_I2C_SCL_PIN;
   i2c_config.scl_pullup_en = GPIO_PULLUP_ENABLE;
   i2c_config.master.clk_speed = 100000;
 
@@ -89,7 +91,7 @@ void app_main(void) {
       assert(false);
   }
 
-  menu_init(I2C_PORT, SDA_PIN, SCL_PIN);
+  menu_init(I2C_PORT, SDA_PIN, SCL_PIN, CONFIG_OLED_RST_PIN);
   ble_hid_init(ble_hid_connection_callback);
   pairing_timer = xTimerCreate("BLE Pair Timeout", pdMS_TO_TICKS(30000), pdFALSE, (void*)0, disable_pairing_cb);
   init_wifi();

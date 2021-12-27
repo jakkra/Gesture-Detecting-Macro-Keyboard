@@ -19,4 +19,24 @@ menu "Gesture Detector Macro Keyboard"
         default "mypassword"
         help
             WiFi password to use.
+    config I2C_SDA_PIN
+        int "I2C SDA PIN"
+        default 4
+        help
+            I2C SDA pin OLED and Trill sensors connected to.
+    config I2C_SCL_PIN
+        int "I2C SCL PIN"
+        default 15
+        help
+            I2C SCL pin OLED and Trill sensors connected to.
+    config OLED_RST_PIN
+        int "OLED RESET PIN"
+        default 16
+        help
+            Pin connected to OLED reset pin.
+    config KEYBOARD_V2
+        bool "New version with more keys and larger OLED display."
+        default true
+        help
+            Use new version two of macro keyboard.
 endmenu

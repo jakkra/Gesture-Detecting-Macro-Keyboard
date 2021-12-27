@@ -17,6 +17,7 @@ typedef struct display_config_t {
     i2c_port_t port;
     gpio_num_t sda;
     gpio_num_t scl;
+    gpio_num_t rst;
 } display_config_t;
 
 static uint8_t u8g2_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
@@ -27,18 +28,32 @@ static display_config_t display_config;
 static u8g2_t u8g2;
 
 
-esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl) {
+esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_num_t rst) {
     display_config.port = port;
     display_config.sda = sda;
     display_config.scl = scl;
+    display_config.rst = rst;
 
-    u8g2_Setup_ssd1306_i2c_128x32_univision_f(
-        &u8g2,
+    ESP_LOGW(TAG, "Resetting OLED Display\n");
+    gpio_config_t io_conf;
+    io_conf.pin_bit_mask = 1ULL << (GPIO_NUM_16);
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_down_en = 1;
+    io_conf.pull_up_en = 0;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&io_conf);
+
+#ifdef CONFIG_KEYBOARD_V2
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f
+#else
+    u8g2_Setup_ssd1306_i2c_128x32_univision_f
+#endif
+        (&u8g2,
         U8G2_R0,
         u8g2_i2c_byte_cb,
         u8g2_gpio_and_delay_cb);
 
-    u8x8_SetI2CAddress(&u8g2.u8x8,0x78);
+    u8x8_SetI2CAddress(&u8g2.u8x8, 0x78); // 0x3C << 1
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);
@@ -112,8 +127,11 @@ static uint8_t u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int
     ESP_LOGD(TAG, "gpio_and_delay_cb: Received a msg: %d, arg_int: %d, arg_ptr: %p", msg, arg_int, arg_ptr);
 
     switch(msg) {
-        case U8X8_MSG_GPIO_AND_DELAY_INIT:
         case U8X8_MSG_GPIO_RESET:
+            ESP_LOGD(TAG, "TOLD RESET: %d!", arg_int);
+            gpio_set_level(display_config.rst, arg_int);
+            break;
+        case U8X8_MSG_GPIO_AND_DELAY_INIT:
         case U8X8_MSG_GPIO_CS:
             break;
         case U8X8_MSG_GPIO_I2C_CLOCK:
@@ -123,7 +141,7 @@ static uint8_t u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int
             gpio_set_level(display_config.sda, arg_int);
             break;
         case U8X8_MSG_DELAY_MILLI:
-            vTaskDelay(arg_int/portTICK_PERIOD_MS);
+            vTaskDelay(pdMS_TO_TICKS(arg_int));
             break;
     }
     return 0;
