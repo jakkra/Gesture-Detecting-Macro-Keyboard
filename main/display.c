@@ -53,7 +53,7 @@ esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_nu
         u8g2_i2c_byte_cb,
         u8g2_gpio_and_delay_cb);
 
-    u8x8_SetI2CAddress(&u8g2.u8x8, 0x78); // 0x3C << 1
+    u8g2_SetI2CAddress(&u8g2, 0x78); // 0x3C << 1
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);
