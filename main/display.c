@@ -34,7 +34,7 @@ esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_nu
     display_config.scl = scl;
     display_config.rst = rst;
 
-    ESP_LOGW(TAG, "Resetting OLED Display\n");
+    ESP_LOGD(TAG, "Resetting OLED Display\n");
     gpio_config_t io_conf;
     io_conf.pin_bit_mask = 1ULL << (GPIO_NUM_16);
     io_conf.mode = GPIO_MODE_OUTPUT;
@@ -128,7 +128,6 @@ static uint8_t u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int
 
     switch(msg) {
         case U8X8_MSG_GPIO_RESET:
-            ESP_LOGD(TAG, "TOLD RESET: %d!", arg_int);
             gpio_set_level(display_config.rst, arg_int);
             break;
         case U8X8_MSG_GPIO_AND_DELAY_INIT:
