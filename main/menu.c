@@ -62,7 +62,7 @@ esp_err_t menu_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_num_t
         work_queue = xQueueCreate(WORK_QUEUE_SIZE, sizeof(work_t));
         assert(work_queue != NULL);
         xTaskCreate(work, "menu_work", 4096, NULL, 10, NULL);
-        work_t* task = malloc(sizeof(work_t*));
+        work_t* task = malloc(sizeof(work_t));
         xQueueSend(work_queue, (void*)&task, (TickType_t)0);
         initialized = true;
     } else {
