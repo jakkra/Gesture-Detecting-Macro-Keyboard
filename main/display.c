@@ -58,6 +58,7 @@ esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_nu
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);
     u8g2_SetFlipMode(&u8g2, 1);
+    u8g2_SetFontMode(&u8g2, 0);
 
     return ESP_OK;
 }
@@ -77,6 +78,42 @@ esp_err_t display_clear(void)
 {
     u8g2_ClearBuffer(&u8g2);
     u8g2_SendBuffer(&u8g2);
+
+    return ESP_OK;
+}
+
+esp_err_t display_draw_animation() {
+    int width = u8g2_GetDisplayWidth(&u8g2);
+    int height = u8g2_GetDisplayHeight(&u8g2);
+    ESP_LOGI(TAG, "Height: %d, width: %d\n", width, height);
+    u8g2_ClearBuffer(&u8g2);
+    
+
+    for (int i = 0; i < 10; i ++) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (x % 2 == 0) {
+                    u8g2_DrawPixel(&u8g2, x, y);
+                }
+            }
+        }
+        u8g2_SendBuffer(&u8g2);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        u8g2_ClearBuffer(&u8g2);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (x % 2 == 1) {
+                    u8g2_DrawPixel(&u8g2, x, y);
+                }
+            }
+        }
+        u8g2_SendBuffer(&u8g2);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+
+
 
     return ESP_OK;
 }

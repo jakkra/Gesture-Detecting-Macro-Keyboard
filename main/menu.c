@@ -22,7 +22,8 @@ typedef enum page_t {
 } page_t;
 
 typedef enum work_t {
-    WORK_REDRAW
+    WORK_REDRAW,
+    WORK_INIT_ANIMTATION,
 } work_t;
 
 typedef struct menu_data_t {
@@ -46,6 +47,7 @@ typedef struct menu_data_t {
 
 static void render_current_page(void);
 static void work(void* arg);
+static void draw_startup_animation(void);
 
 static menu_data_t data;
 static xQueueHandle work_queue = NULL;
@@ -56,13 +58,14 @@ esp_err_t menu_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_num_t
     esp_err_t ret = ESP_OK;
     memset(&data, 0, sizeof(data));
     
-    data.current_page = PAGE_CONNECTION;
+    data.current_page = PAGE_GESTURE;
     ret = display_init(port, sda, scl, rst);
     if (ret == ESP_OK) {
         work_queue = xQueueCreate(WORK_QUEUE_SIZE, sizeof(work_t));
         assert(work_queue != NULL);
         xTaskCreate(work, "menu_work", 4096, NULL, 10, NULL);
         work_t* task = malloc(sizeof(work_t));
+        *task = WORK_INIT_ANIMTATION;
         xQueueSend(work_queue, (void*)&task, (TickType_t)0);
         initialized = true;
     } else {
@@ -128,10 +131,29 @@ static void work(void* arg)
 
     for (;;) {
         if (xQueueReceive(work_queue, &work_type, portMAX_DELAY)) {
+            switch (*work_type) {
+                case WORK_INIT_ANIMTATION:
+                    draw_startup_animation();
+                    break;
+                case WORK_REDRAW:
+                    render_current_page();
+                    break;
+                default:
+                    ESP_LOGE(TAG, "Unknown work type: %d\n", *work_type);
+            }
             free(work_type);
-            render_current_page();
         }
     }
+}
+
+static void draw_startup_animation(void) {
+    display_clear();
+    //display_draw_animation();
+    //vTaskDelay(pdMS_TO_TICKS(1000));
+
+    work_t* task = malloc(sizeof(work_t));
+    *task = WORK_REDRAW;
+    xQueueSend(work_queue, (void*)&task, (TickType_t)0);
 }
 
 static void render_crypto(void) {

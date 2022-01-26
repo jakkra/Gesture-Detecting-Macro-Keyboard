@@ -10,7 +10,7 @@ winId4 = 0
 winId5 = 0
 
 ; Swipe horizontal
-^!k::  ; Ctrl+Alt+k
+^!p::  ; Ctrl+Alt+p
 {
     WinActivate ahk_id %winId2Git%
     Send git log{Enter}
@@ -18,7 +18,7 @@ winId5 = 0
 }
 
 ; Swipe vertical
-^!l::  ; Ctrl+Alt+l
+^!q::  ; Ctrl+Alt+q
 {
     WinActivate ahk_id %winId2Git%
     Send git diff{Enter}
@@ -26,7 +26,7 @@ winId5 = 0
 }
 
 ; Swipe Arrow down
-^!m::  ; Ctrl+Alt+m
+^!r::  ; Ctrl+Alt+r
 {
     WinActivate ahk_id %winId2Git%
     Send git fetch && git pull origin $(git rev-parse --abbrev-ref HEAD){Enter}
@@ -34,21 +34,21 @@ winId5 = 0
 }
 
 ; Swipe 'C' as in COM Ports
-^!n::  ; Ctrl+Alt+n
+^!s::  ; Ctrl+Alt+s
 {
     listComPorts()
     return
 }
 
 ; Swipe Arrow Right
-^!o::  ; Ctrl+Alt+o
+^!t::  ; Ctrl+Alt+t
 {
     send {Media_Next}
     return
 }
 
 ; Swipe Arrow Up
-^!p::  ; Ctrl+Alt+p
+^!u::  ; Ctrl+Alt+u
 {
     WinActivate ahk_id %winId2Git%
     Send git push origin $(git rev-parse --abbrev-ref HEAD)
@@ -56,7 +56,7 @@ winId5 = 0
 }
 
 ; Swipe S
-^!q::  ; Ctrl+Alt+q
+^!v::  ; Ctrl+Alt+v
 {
     WinActivate ahk_id %winId2Git%
     Send git status{Enter}
@@ -153,7 +153,7 @@ listComPorts()
 ; So to set the window connected to ^!a you will send ^!f
 ; and whatever window in focus will be connected to ^!a.
 
-^!f::  ; Ctrl+Alt+f
+^!k::  ; Ctrl+Alt+k
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
@@ -161,7 +161,7 @@ listComPorts()
     return
 }
 
-^!g::  ; Ctrl+Alt+g
+^!l::  ; Ctrl+Alt+l
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
@@ -169,7 +169,7 @@ listComPorts()
     return
 }
 
-^!h::  ; Ctrl+Alt+h
+^!m::  ; Ctrl+Alt+m
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
@@ -177,7 +177,7 @@ listComPorts()
     return
 }
 
-^!i::  ; Ctrl+Alt+i
+^!n::  ; Ctrl+Alt+n
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
@@ -185,7 +185,7 @@ listComPorts()
     return
 }
 
-^!j::  ; Ctrl+Alt+j
+^!o::  ; Ctrl+Alt+o
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;

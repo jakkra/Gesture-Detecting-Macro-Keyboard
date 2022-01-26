@@ -28,14 +28,14 @@
 
 #define I2C_PORT I2C_NUM_0
 
-#define CENTER_GESTURE      1 // Need to match if the model is trained with centered data or not.
-#define PRINT_GESTURE_DATA  0
+#define PRINT_GESTURE_DATA    0
+#define SWITCH_UPDATE_RATE_MS 20
 
 static const char* TAG = "main";
 
 static void sendKeysFromGesture(gesture_label_t prediction);
 static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value);
-static void switch_pressed_callback(keypad_switch_t key, bool longpress);
+static void keys_scanned_callback(key_info_t* keys, int number_of_keys);
 static void init_wifi(void);
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void periodic_update_thread(void* arg);
@@ -63,7 +63,7 @@ void app_main(void) {
   ESP_ERROR_CHECK(ret);
 
   key_backlight_init();
-  keypress_input_init();
+  keypress_input_init(SWITCH_UPDATE_RATE_MS);
 
   i2c_config.mode = I2C_MODE_MASTER;
   i2c_config.sda_io_num = CONFIG_I2C_SDA_PIN;
@@ -80,8 +80,8 @@ void app_main(void) {
     ret = touch_sensors_init(I2C_PORT, &touch_bar_event_callback);
   }
 
-  // Holding SWITCH_6 down when booting => enter training mode.
-  if (keypress_input_read(KEYPAD_SWITCH_6)) {
+  // Holding SWITCH_MODE down when booting => enter training mode.
+  if (keypress_input_read(KEYPAD_SWITCH_MODE)) {
       printf("Entering training mode\n");
       runPrintTrainData();
       // Never returns
@@ -89,6 +89,7 @@ void app_main(void) {
   }
 
   menu_init(I2C_PORT, CONFIG_I2C_SDA_PIN, CONFIG_I2C_SCL_PIN, CONFIG_OLED_RST_PIN);
+
   ble_hid_init(ble_hid_connection_callback);
   pairing_timer = xTimerCreate("BLE Pair Timeout", pdMS_TO_TICKS(30000), pdFALSE, (void*)0, disable_pairing_cb);
   init_wifi();
@@ -100,7 +101,7 @@ void app_main(void) {
   tf_gesture_predictor_run(v_shape, sizeof(v_shape), &prediction, PRINT_GESTURE_DATA);
   printf("Prediction took %dms\n", (int)(esp_timer_get_time() - start) / 1000);
 
-  keypress_input_set_callback(switch_pressed_callback);
+  keypress_input_set_callback(keys_scanned_callback);
 
   while (true) {
     in_matrix = touch_sensors_touchpad_fetch();
@@ -179,41 +180,87 @@ static void disable_pairing_cb(TimerHandle_t xTimer)
   ESP_LOGD(TAG, "Disabled pairing after timeout");
 }
 
-static void switch_pressed_callback(keypad_switch_t key, bool longpress)
+static char* keypad_switch_to_name(keypad_switch_t switch_num)
+{
+  switch (switch_num) {
+    case KEYPAD_SWITCH_1:
+      return "KEYPAD_SWITCH_1";
+    case KEYPAD_SWITCH_2:
+      return "KEYPAD_SWITCH_2";
+    case KEYPAD_SWITCH_3:
+      return "KEYPAD_SWITCH_3";
+    case KEYPAD_SWITCH_4:
+      return "KEYPAD_SWITCH_4";
+    case KEYPAD_SWITCH_5:
+      return "KEYPAD_SWITCH_5";
+    case KEYPAD_SWITCH_6:
+      return "KEYPAD_SWITCH_6";
+    case KEYPAD_SWITCH_7:
+      return "KEYPAD_SWITCH_7";
+    case KEYPAD_SWITCH_8:
+      return "KEYPAD_SWITCH_8";
+    case KEYPAD_SWITCH_9:
+      return "KEYPAD_SWITCH_9";
+    case KEYPAD_SWITCH_10:
+      return "KEYPAD_SWITCH_10";
+    case KEYPAD_SWITCH_MODE:
+      return "KEYPAD_SWITCH_MODE";
+    default:
+      return "INVALID_SWITCH";
+  }
+}
+
+static void keys_scanned_callback(key_info_t* switches, int number_of_keys)
 {
   esp_err_t err = ESP_FAIL;
   key_mask_t key_mask;
+  bool longpress;
   uint8_t num_keys;
   uint8_t keys[GESTURE_MAP_MAX_KEYS];
 
-  switch (key) {
-    case KEYPAD_SWITCH_1:
-    case KEYPAD_SWITCH_2:
-    case KEYPAD_SWITCH_3:
-    case KEYPAD_SWITCH_4:
-    case KEYPAD_SWITCH_5:
-      err = keymap_config_switch_get_keys(key, longpress, &key_mask, keys, &num_keys);
-      break;
-    case KEYPAD_SWITCH_6:
-      if (!longpress) {
-        menu_next_page();
-      } else {
-        xTimerStop(pairing_timer, portMAX_DELAY);
-        xTimerStart(pairing_timer, portMAX_DELAY);
-        ble_hid_set_pairable(true);
-        ESP_LOGI(TAG, "BLE pairing enabled for 30s");
-      }
-      break;
-    default:
-      return;
-  }
+  for (int i = 0; i < number_of_keys; i++) {
+    if (((switches[i].state != KEYPAD_SWITCH_STATE_LONG_PRESSED) && (switches[i].state != KEYPAD_SWITCH_STATE_SHORT_PRESSED))) {
+      continue;
+    }
 
-  if (err == ESP_OK) {
-    if (ble_hid_request_access(250) == ESP_OK) {
-      ble_hid_send_key(key_mask, keys, num_keys);
-      vTaskDelay(pdMS_TO_TICKS(30));
-      ble_hid_send_key(0, NULL, 0);
-      ble_hid_give_access();
+    longpress = switches[i].state == KEYPAD_SWITCH_STATE_LONG_PRESSED;
+
+    printf("%s %d => longpress: %d\n", keypad_switch_to_name(switches[i].key), switches[i].state, longpress);
+
+    switch (switches[i].key) {
+      case KEYPAD_SWITCH_1:
+      case KEYPAD_SWITCH_2:
+      case KEYPAD_SWITCH_3:
+      case KEYPAD_SWITCH_4:
+      case KEYPAD_SWITCH_5:
+      case KEYPAD_SWITCH_6:
+      case KEYPAD_SWITCH_7:
+      case KEYPAD_SWITCH_8:
+      case KEYPAD_SWITCH_9:
+      case KEYPAD_SWITCH_10:
+        err = keymap_config_switch_get_keys(switches[i].key, longpress, &key_mask, keys, &num_keys);
+        break;
+      case KEYPAD_SWITCH_MODE:
+        if (!longpress) {
+          menu_next_page();
+        } else {
+          xTimerStop(pairing_timer, portMAX_DELAY);
+          xTimerStart(pairing_timer, portMAX_DELAY);
+          ble_hid_set_pairable(true);
+          ESP_LOGI(TAG, "BLE pairing enabled for 30s");
+        }
+        break;
+      default:
+        return;
+    }
+
+    if (err == ESP_OK) {
+      if (ble_hid_request_access(250) == ESP_OK) {
+        ble_hid_send_key(key_mask, keys, num_keys);
+        vTaskDelay(pdMS_TO_TICKS(30));
+        ble_hid_send_key(0, NULL, 0);
+        ble_hid_give_access();
+      }
     }
   }
 }
