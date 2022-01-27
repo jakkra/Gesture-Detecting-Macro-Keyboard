@@ -148,8 +148,8 @@ static void work(void* arg)
 
 static void draw_startup_animation(void) {
     display_clear();
-    //display_draw_animation();
-    //vTaskDelay(pdMS_TO_TICKS(1000));
+    display_draw_animation();
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     work_t* task = malloc(sizeof(work_t));
     *task = WORK_REDRAW;

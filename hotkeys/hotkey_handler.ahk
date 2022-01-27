@@ -13,7 +13,7 @@ winId5 = 0
 ^!p::  ; Ctrl+Alt+p
 {
     WinActivate ahk_id %winId2Git%
-    Send git log{Enter}
+    Send git diff{Enter}
     return
 }
 
@@ -21,7 +21,7 @@ winId5 = 0
 ^!q::  ; Ctrl+Alt+q
 {
     WinActivate ahk_id %winId2Git%
-    Send git diff{Enter}
+    Send git log{Enter}
     return
 }
 
