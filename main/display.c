@@ -63,13 +63,15 @@ esp_err_t display_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_nu
     return ESP_OK;
 }
 
-esp_err_t display_draw_text(char* line1, char* line2)
+esp_err_t display_draw_text(char* line1, char* line2, char* line3, char* line4)
 {
     u8g2_SetDrawColor(&u8g2, 1);
     u8g2_SetFont(&u8g2, u8g2_font_profont12_tf);
     int8_t max_char_height = u8g2_GetMaxCharHeight(&u8g2);
     u8g2_DrawStr(&u8g2, 1, 1 * max_char_height, line1);
     u8g2_DrawStr(&u8g2, 1, 2 * max_char_height, line2);
+    u8g2_DrawStr(&u8g2, 1, 3 * max_char_height, line3);
+    u8g2_DrawStr(&u8g2, 1, 4 * max_char_height, line4);
     u8g2_SendBuffer(&u8g2);
 
     return ESP_OK;

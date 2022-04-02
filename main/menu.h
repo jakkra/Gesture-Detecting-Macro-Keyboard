@@ -7,7 +7,8 @@ typedef enum page_t {
     PAGE_CRYPTO,
     PAGE_GESTURE,
     PAGE_CONNECTION,
-    PAGE_PAIRING,
+    PAGE_HIDDEN_FIRST,
+    PAGE_PAIRING = PAGE_HIDDEN_FIRST,
     PAGE_END
 } page_t;
 

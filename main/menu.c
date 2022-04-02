@@ -9,8 +9,9 @@
 
 #define IP_STR_MAX_LEN      15
 #define MAC_STR_MAX_LEN     6 * 2
+#define SSID_MAX_LEN        20
 #define WORK_QUEUE_SIZE     5
-#define MAX_LINE_LENGTH     100
+#define MAX_LINE_LENGTH     50
 
 static const char* TAG = "menu";
 
@@ -34,7 +35,9 @@ typedef struct menu_data_t {
         bool ble_connected;
         char ip[IP_STR_MAX_LEN + 1];
         char addr[MAC_STR_MAX_LEN + 1];
-    } connection;
+        bool connected;
+        char ssid[SSID_MAX_LEN + 1]
+;    } connection;
     page_t current_page;
 } menu_data_t;
 
@@ -52,7 +55,7 @@ esp_err_t menu_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_num_t
     esp_err_t ret = ESP_OK;
     memset(&data, 0, sizeof(data));
     
-    data.current_page = PAGE_GESTURE;
+    data.current_page = PAGE_CONNECTION;
     ret = display_init(port, sda, scl, rst);
     if (ret == ESP_OK) {
         work_queue = xQueueCreate(WORK_QUEUE_SIZE, sizeof(work_t));
@@ -92,12 +95,14 @@ esp_err_t menu_draw_gestures(gesture_prediction_t* prediction) {
     return ret;
 }
 
-esp_err_t menu_draw_connection_status(char* wifi_ip, char* ble_addr) {
+esp_err_t menu_draw_connection_status(char* ssid, bool connected, char* wifi_ip, char* ble_addr) {
     esp_err_t ret = ESP_OK;
     assert(initialized);
     strncpy(data.connection.ip, wifi_ip, IP_STR_MAX_LEN);
     strncpy(data.connection.addr, ble_addr, MAC_STR_MAX_LEN);
-    if (data.current_page == PAGE_PAIRING) {
+    strncpy(data.connection.ssid, ssid, SSID_MAX_LEN);
+    data.connection.connected = connected;
+    if (data.current_page == PAGE_CONNECTION) {
         schedule_redraw();
     }
     return ret;
@@ -106,7 +111,7 @@ esp_err_t menu_draw_connection_status(char* wifi_ip, char* ble_addr) {
 esp_err_t menu_next_page(void){
     esp_err_t ret = ESP_OK;
     assert(initialized);
-    data.current_page = (page_t)((data.current_page + 1) % PAGE_END);
+    data.current_page = (page_t)((data.current_page + 1) % PAGE_HIDDEN_FIRST);
     schedule_redraw();
     return ret;
 }
@@ -163,7 +168,7 @@ static void render_crypto(void) {
     snprintf(line1, sizeof(line1), "BTC: %.0f (%.2f%%)", data.crypto.bitcoinPrice, data.crypto.bitcoinChange24h);
 
     snprintf(line2, sizeof(line2), "DOGE: %.2f (%.2f%%)", data.crypto.dogePrice, data.crypto.dogeChange24h);
-    display_draw_text(line1, line2);
+    display_draw_text(line1, line2, "", "");
 }
 
 static void render_gesture(void) {
@@ -175,24 +180,27 @@ static void render_gesture(void) {
     display_clear();
     snprintf(line1, sizeof(line1), "Probability: %f", data.gesture.prediction.probability);
     snprintf(line2, sizeof(line2), "%s", tf_gesture_predictor_get_name(data.gesture.prediction.label));
-    display_draw_text(line1, line2);
+    display_draw_text(line1, line2, "", "");
 }
 
 static void render_connection(void) {
     char line1[MAX_LINE_LENGTH];
     char line2[MAX_LINE_LENGTH];
+    char line3[MAX_LINE_LENGTH];
     memset(line1, 0, sizeof(line1));
     memset(line2, 0, sizeof(line2));
+    memset(line3, 0, sizeof(line3));
 
-    snprintf(line1, sizeof(line1), "IP: %s", data.connection.ip);
-    snprintf(line2, sizeof(line2), "BLE: %s", data.connection.addr);
+    snprintf(line1, sizeof(line1), "SSID: %s", data.connection.ssid);
+    snprintf(line2, sizeof(line2), "IP: %s", data.connection.ip);
+    snprintf(line3, sizeof(line3), "BLE: %s", data.connection.addr);
     display_clear();
-    display_draw_text(line1, line2);
+    display_draw_text(line1, line2, line3, "");
 }
 
 static void render_pairing(void) {
     display_clear();
-    display_draw_text("Pairing enabled...", "");
+    display_draw_text("Pairing enabled...", "", "", "");
 }
 
 static void render_current_page(void) {
