@@ -18,6 +18,7 @@ static void set_pixel(led_strip_t *strip, uint32_t index, uint32_t red, uint32_t
 void led_strip_hsv2rgb(uint32_t h, uint32_t s, uint32_t v, uint32_t *r, uint32_t *g, uint32_t *b);
 
 static led_strip_t *strip;
+static key_backlight_mode_t led_mode;
 
 void key_backlight_init(void)
 {
@@ -35,11 +36,18 @@ void key_backlight_init(void)
         ESP_LOGE(TAG, "install WS2812 driver failed");
     }
 
+    led_mode = KEY_BACKLIGHT_RAINBOW;
+
     ESP_ERROR_CHECK(strip->clear(strip, 100));
 
     ESP_LOGI(TAG, "LED Strip ready");
 
     xTaskCreate(led_anim_thread, "led_anim_thread", 2048, NULL, 10, NULL);
+}
+
+void key_backlight_set_mode(key_backlight_mode_t mode)
+{
+    led_mode = mode;
 }
 
 static void set_pixel(led_strip_t *strip, uint32_t index, uint32_t red, uint32_t green, uint32_t blue, uint32_t brightness)
@@ -61,16 +69,46 @@ static void led_anim_thread(void* arg) {
     uint32_t blue = 0;
     uint16_t hue = 0;
     uint16_t start_rgb = 0;
+    bool blink_on = false;
 
     while (true) {
-        for (int i = 0; i < CONFIG_STRIP_LED_NUMBER; i++) {
-            hue = (start_rgb + i * 50) % 360;
-            led_strip_hsv2rgb(hue, 100, 50, &red, &green, &blue);
-            ESP_ERROR_CHECK(strip->set_pixel(strip, i, red, green, blue));
+        switch (led_mode) {
+            case KEY_BACKLIGHT_RAINBOW:
+            {
+                for (int i = 0; i < CONFIG_STRIP_LED_NUMBER; i++) {
+                    hue = (start_rgb + i * 50) % 360;
+                    led_strip_hsv2rgb(hue, 100, 50, &red, &green, &blue);
+                    ESP_ERROR_CHECK(strip->set_pixel(strip, i, red, green, blue));
+                }
+                ESP_ERROR_CHECK(strip->refresh(strip, 100));
+                vTaskDelay(pdMS_TO_TICKS(RAINBOW_SPEED_MS));
+                start_rgb += 2;
+                break;
+            }
+            case KEY_BACKLIGHT_BLINKING:
+            {
+                for (int i = 0; i < CONFIG_STRIP_LED_NUMBER; i++) {
+                    if (blink_on) {
+                        ESP_ERROR_CHECK(strip->set_pixel(strip, i, 100, 100, 100));
+                    } else {
+                        ESP_ERROR_CHECK(strip->clear(strip, 100));
+                    }
+                    ESP_ERROR_CHECK(strip->refresh(strip, 100));
+                }
+                blink_on = !blink_on;
+                vTaskDelay(pdMS_TO_TICKS(500));
+                break;
+            }
+            case KEY_BACKLIGHT_OFF:
+            {
+                ESP_ERROR_CHECK(strip->clear(strip, 100));
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                break;
+            }
+            default: 
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                break;
         }
-        ESP_ERROR_CHECK(strip->refresh(strip, 100));
-        vTaskDelay(pdMS_TO_TICKS(RAINBOW_SPEED_MS));
-        start_rgb += 2;
     }
 }
 

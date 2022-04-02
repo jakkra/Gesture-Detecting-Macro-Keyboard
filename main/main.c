@@ -177,6 +177,8 @@ static void touch_bar_event_callback(touch_bar_state state, int16_t raw_value)
 static void disable_pairing_cb(TimerHandle_t xTimer)
 {
   ble_hid_set_pairable(false);
+  key_backlight_set_mode(KEY_BACKLIGHT_RAINBOW);
+  menu_set_page(PAGE_GESTURE);
   ESP_LOGD(TAG, "Disabled pairing after timeout");
 }
 
@@ -247,6 +249,8 @@ static void keys_scanned_callback(key_info_t* switches, int number_of_keys)
           xTimerStop(pairing_timer, portMAX_DELAY);
           xTimerStart(pairing_timer, portMAX_DELAY);
           ble_hid_set_pairable(true);
+          menu_set_page(PAGE_PAIRING);
+          key_backlight_set_mode(KEY_BACKLIGHT_BLINKING);
           ESP_LOGI(TAG, "BLE pairing enabled for 30s");
         }
         break;
@@ -301,7 +305,7 @@ static void refresh_menu_connection_data(void) {
   snprintf(addr, sizeof(addr), "%08x%04x",\
                 (connected_ble_addr[0] << 24) + (connected_ble_addr[1] << 16) + (connected_ble_addr[2] << 8) + connected_ble_addr[3],
                 (connected_ble_addr[4] << 8) + connected_ble_addr[5]);
-  menu_draw_connection_status(ip, addr);
+  menu_draw_connection_status(CONFIG_ESP_WIFI_SSID, wifi_connected, ip, addr);
 }
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)

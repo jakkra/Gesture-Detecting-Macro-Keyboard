@@ -14,13 +14,6 @@
 
 static const char* TAG = "menu";
 
-typedef enum page_t {
-    PAGE_CRYPTO,
-    PAGE_GESTURE,
-    PAGE_CONNECTION,
-    PAGE_END
-} page_t;
-
 typedef enum work_t {
     WORK_REDRAW,
     WORK_INIT_ANIMTATION,
@@ -48,6 +41,7 @@ typedef struct menu_data_t {
 static void render_current_page(void);
 static void work(void* arg);
 static void draw_startup_animation(void);
+static void schedule_redraw(void);
 
 static menu_data_t data;
 static xQueueHandle work_queue = NULL;
@@ -83,9 +77,7 @@ esp_err_t menu_draw_crypto(double bitcoinPrice, double bitcoinChange24h, double 
     data.crypto.dogePrice = dogePrice;
     data.crypto.dogeChange24h = dogeChange24h;
     if (data.current_page == PAGE_CRYPTO) {
-        work_t* task = malloc(sizeof(work_t));
-        *task = WORK_REDRAW;
-        xQueueSend(work_queue, (void*)&task, (TickType_t)0);
+        schedule_redraw();
     }
     return ret;
 }
@@ -95,9 +87,7 @@ esp_err_t menu_draw_gestures(gesture_prediction_t* prediction) {
     assert(initialized);
     memcpy(&data.gesture.prediction, prediction, sizeof(gesture_prediction_t));
     if (data.current_page == PAGE_GESTURE) {
-        work_t* task = malloc(sizeof(work_t));
-        *task = WORK_REDRAW;
-        xQueueSend(work_queue, (void*)&task, (TickType_t)0);
+        schedule_redraw();
     }
     return ret;
 }
@@ -107,10 +97,8 @@ esp_err_t menu_draw_connection_status(char* wifi_ip, char* ble_addr) {
     assert(initialized);
     strncpy(data.connection.ip, wifi_ip, IP_STR_MAX_LEN);
     strncpy(data.connection.addr, ble_addr, MAC_STR_MAX_LEN);
-    if (data.current_page == PAGE_CONNECTION) {
-        work_t* task = malloc(sizeof(work_t));
-        *task = WORK_REDRAW;
-        xQueueSend(work_queue, (void*)&task, (TickType_t)0);
+    if (data.current_page == PAGE_PAIRING) {
+        schedule_redraw();
     }
     return ret;
 }
@@ -119,9 +107,15 @@ esp_err_t menu_next_page(void){
     esp_err_t ret = ESP_OK;
     assert(initialized);
     data.current_page = (page_t)((data.current_page + 1) % PAGE_END);
-    work_t* task = malloc(sizeof(work_t));
-    *task = WORK_REDRAW;
-    xQueueSend(work_queue, (void*)&task, (TickType_t)0);
+    schedule_redraw();
+    return ret;
+}
+
+esp_err_t menu_set_page(page_t page) {
+    esp_err_t ret = ESP_OK;
+    assert(initialized);
+    data.current_page = page;
+    schedule_redraw();
     return ret;
 }
 
@@ -149,8 +143,11 @@ static void work(void* arg)
 static void draw_startup_animation(void) {
     display_clear();
     display_draw_animation();
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    schedule_redraw();
+}
 
+static void schedule_redraw(void)
+{
     work_t* task = malloc(sizeof(work_t));
     *task = WORK_REDRAW;
     xQueueSend(work_queue, (void*)&task, (TickType_t)0);
@@ -193,7 +190,13 @@ static void render_connection(void) {
     display_draw_text(line1, line2);
 }
 
+static void render_pairing(void) {
+    display_clear();
+    display_draw_text("Pairing enabled...", "");
+}
+
 static void render_current_page(void) {
+    printf("Render current page: %d\n", data.current_page);
     switch (data.current_page) {
         case PAGE_CRYPTO:
         {
@@ -208,6 +211,11 @@ static void render_current_page(void) {
         case PAGE_CONNECTION:
         {
             render_connection();
+            break;
+        }
+        case PAGE_PAIRING:
+        {
+            render_pairing();
             break;
         }
         default:
