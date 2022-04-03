@@ -20,7 +20,7 @@
 #include "esp_event.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "crypto.h"
+#include "market_data.h"
 #include "key_backlight.h"
 #include "sdkconfig.h"
 
@@ -96,7 +96,7 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
   
-  xTaskCreate(periodic_update_thread, "periodic_update_thread", 4096, NULL, 10, NULL);
+  xTaskCreate(periodic_update_thread, "periodic_update_thread", 5000, NULL, 10, NULL);
   int64_t start = esp_timer_get_time();
   tf_gesture_predictor_run(v_shape, sizeof(v_shape), &prediction, PRINT_GESTURE_DATA);
   printf("Prediction took %dms\n", (int)(esp_timer_get_time() - start) / 1000);
@@ -328,12 +328,14 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 }
 
 static void periodic_update_thread(void* arg) {
-  double btc, doge, btc_change, doge_change;
+  double btc, doge, omx = 0, nasdaq, btc_change, doge_change, omx_change = 0, nasdaq_change;
   for (;;) {
     if (wifi_connected) {
-      crypto_get_price("bitcoin", &btc, &btc_change);
-      crypto_get_price("dogecoin", &doge, &doge_change);
-      menu_draw_crypto(btc, btc_change, doge, doge_change);
+      market_data_get_crypto("bitcoin", &btc, &btc_change);
+      market_data_get_crypto("dogecoin", &doge, &doge_change);
+      market_data_get_stock("^OMX", &omx, &omx_change);
+      market_data_get_stock("^IXIC", &nasdaq, &nasdaq_change);
+      menu_draw_market_data(btc, btc_change, doge, doge_change, omx, omx_change, nasdaq, nasdaq_change);
     }
     vTaskDelay(pdMS_TO_TICKS(5000));
   }

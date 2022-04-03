@@ -24,12 +24,16 @@ typedef struct menu_data_t {
     struct gesture {
         gesture_prediction_t prediction;
     } gesture;
-    struct crypto {
+    struct market {
         double bitcoinPrice;
         double dogePrice;
+        double omxPrice;
+        double nasdaqPrice;
         double bitcoinChange24h;
         double dogeChange24h;
-    } crypto;
+        double omxChange24h;
+        double nasdaqChange24h;
+    } market;
     struct connection {
         bool wifi_connected;
         bool ble_connected;
@@ -72,13 +76,17 @@ esp_err_t menu_init(i2c_port_t port, gpio_num_t  sda, gpio_num_t scl, gpio_num_t
     return ret;
 }
 
-esp_err_t menu_draw_crypto(double bitcoinPrice, double bitcoinChange24h, double dogePrice, double dogeChange24h) {
+esp_err_t menu_draw_market_data(double bitcoinPrice, double bitcoinChange24h, double dogePrice, double dogeChange24h, double omxPrice, double omxChange24h, double nasdaqPrice, double nasdaqChange24h) {
     esp_err_t ret = ESP_OK;
     assert(initialized);
-    data.crypto.bitcoinPrice = bitcoinPrice;
-    data.crypto.bitcoinChange24h = bitcoinChange24h;
-    data.crypto.dogePrice = dogePrice;
-    data.crypto.dogeChange24h = dogeChange24h;
+    data.market.bitcoinPrice = bitcoinPrice;
+    data.market.bitcoinChange24h = bitcoinChange24h;
+    data.market.dogePrice = dogePrice;
+    data.market.dogeChange24h = dogeChange24h;
+    data.market.omxPrice = omxPrice;
+    data.market.omxChange24h = omxChange24h;
+    data.market.nasdaqPrice = nasdaqPrice;
+    data.market.nasdaqChange24h = nasdaqChange24h;
     if (data.current_page == PAGE_CRYPTO) {
         schedule_redraw();
     }
@@ -158,17 +166,23 @@ static void schedule_redraw(void)
     xQueueSend(work_queue, (void*)&task, (TickType_t)0);
 }
 
-static void render_crypto(void) {
+static void render_market_data(void) {
     char line1[MAX_LINE_LENGTH];
     char line2[MAX_LINE_LENGTH];
+    char line3[MAX_LINE_LENGTH];
+    char line4[MAX_LINE_LENGTH];
     memset(line1, 0, sizeof(line1));
     memset(line2, 0, sizeof(line2));
+    memset(line3, 0, sizeof(line3));
+    memset(line4, 0, sizeof(line4));
 
     display_clear();
-    snprintf(line1, sizeof(line1), "BTC: %.0f (%.2f%%)", data.crypto.bitcoinPrice, data.crypto.bitcoinChange24h);
+    snprintf(line1, sizeof(line1), "BTC: %.0f (%.2f%%)", data.market.bitcoinPrice, data.market.bitcoinChange24h);
+    snprintf(line2, sizeof(line2), "DOGE: %.2f (%.2f%%)", data.market.dogePrice, data.market.dogeChange24h);
+    snprintf(line3, sizeof(line3), "OMX: %.2f%%", data.market.omxChange24h);
+    snprintf(line4, sizeof(line4), "NASDAQ: %.2f%%", data.market.nasdaqChange24h);
 
-    snprintf(line2, sizeof(line2), "DOGE: %.2f (%.2f%%)", data.crypto.dogePrice, data.crypto.dogeChange24h);
-    display_draw_text(line1, line2, "", "");
+    display_draw_text(line1, line2, line3, line4);
 }
 
 static void render_gesture(void) {
@@ -208,7 +222,7 @@ static void render_current_page(void) {
     switch (data.current_page) {
         case PAGE_CRYPTO:
         {
-            render_crypto();
+            render_market_data();
             break;
         }
         case PAGE_GESTURE:
