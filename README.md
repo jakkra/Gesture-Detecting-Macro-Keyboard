@@ -3,7 +3,7 @@ tldr; Glorified Bluetooth macro keyboard with machine learning (TensorFlow Lite 
 ## Main features
 - Capacitive touch pad for drawing gestures on that maps to actions on the computer.
 - Capacitive touch bar for volume control.
-- 6 Buttons for generic control.
+- 11 Buttons for generic control.
 - Optional AutoHotkey for programatical control exactly what shall happen when keys are pressed or a gesture is drawn.
 - Small OLED display for various info such as crypto prices, remote Bluetooth status, local IP and gesture prediction debug info.
 - BLE HID to connect to a computer and act as a keyboard.
@@ -18,9 +18,9 @@ The switch presses and the touchpad gestures will end up being sent as a keyboar
 
 **Current AutoHotkey script works as following**
 
-On the computer focus one window and then hold down one of SWITCH_1-5 for 2s. This will connect this key to that specific window. When clicking the key it will focus window if not in focus, and if in focus minimize it.
+On the computer focus one window and then hold down one of SWITCH_1-10 for 2s. This will connect this key to that specific window. When clicking the key it will focus window if not in focus, and if in focus minimize it.
 
-**Gestures are mapped as following right now**
+**Gestures are mapped as following**
 | Gesture        | Action | How to remember
 | ------------- |:-------------|:-------------| 
 |ARROW_RIGHT | Media key next track | > as in next
@@ -36,7 +36,7 @@ Note the commands involving git above will also focus the git terminal window be
 [`hotkeys/hotkey_handler.ahk`](hotkeys/hotkey_handler.ahk)
 
 
-#### SWITCH_6
+#### SWITCH_11
 Is special key and used for enable Bluetooth pairing (hold down for 5s) and moving through the different "menus" on the OLED screen.
 
 ## Compiling ESP32 code
@@ -50,7 +50,7 @@ Tensorflow Lite is used to recognize what is being drawn on the touchpad. There 
 [Higher res video here](https://youtu.be/cg1-SUCJ2Vs)
 
 ### Gather train data
-First you need to enter training mode on the macro keybord by holding down SWITCH_6 while plugging in power. In training mode the device pretty much just pipes the raw data from the trackpad over UART as a string with this format: `[x1, y1, x2, y2,...]\n`. Then go to the  `/training` folder. For each new gesture `collect_train_data.py` needs to run twice, first to collect train data and then to collect test data. For current number of gestures (7) about 150 train samples and about 45 test samples seems to be enough to get very good predictions.
+First you need to enter training mode on the macro keybord by holding down SWITCH_11 while plugging in power. In training mode the device pretty much just pipes the raw data from the trackpad over UART as a string with this format: `[x1, y1, x2, y2,...]\n`. Then go to the  `/training` folder. For each new gesture `collect_train_data.py` needs to run twice, first to collect train data and then to collect test data. For current number of gestures (7) about 150 train samples and about 45 test samples seems to be enough to get very good predictions.
 
     python collect_train_data.py --port COMX --gesture_name v_shape
     python collect_train_data.py --port COMX --gesture_name v_shape --test_data
