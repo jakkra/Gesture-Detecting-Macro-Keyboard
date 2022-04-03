@@ -5,7 +5,9 @@
 
 typedef enum ble_hid_connection {
     BLE_HID_CONNECTED,
-    BLE_HID_DISCONNECTED
+    BLE_HID_DISCONNECTED,
+    BLE_HID_BOND_SUCCESS,
+    BLE_HID_BOND_FAILED,
 } ble_hid_connection;
 
 typedef void hid_connection_callback(ble_hid_connection event, esp_bd_addr_t* addr);

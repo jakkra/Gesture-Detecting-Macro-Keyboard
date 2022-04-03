@@ -351,6 +351,12 @@ static void ble_hid_connection_callback(ble_hid_connection event, esp_bd_addr_t*
       memset(connected_ble_addr, 0, sizeof(esp_bd_addr_t));
       refresh_menu_connection_data();
       break;
+    case BLE_HID_BOND_SUCCESS:
+      xTimerStop(pairing_timer, portMAX_DELAY);
+      ble_hid_set_pairable(false);
+      key_backlight_set_mode(KEY_BACKLIGHT_RAINBOW);
+      menu_set_page(PAGE_GESTURE);
+      break;
     default:
       break;
   }
