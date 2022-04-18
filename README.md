@@ -9,8 +9,15 @@ tldr; Glorified Bluetooth macro keyboard with machine learning (TensorFlow Lite 
 - BLE HID to connect to a computer and act as a keyboard.
 - Such very RGB.
 
-![training](.github/day.jpg)
-![training](.github/rgb.jpg )
+![training](.github/both.JPG)
+![training](.github/top.JPG)
+![training](.github/side.JPG)
+<p float="left">
+  <img src=".github/day.jpg" width="49%" />
+  <img src=".github/rgb.jpg" width="49%" />
+</p>
+
+![training](.github/caps.JPG)
 ![training](.github/demo.gif)
 
 ### How it works
@@ -40,7 +47,7 @@ Note the commands involving git above will also focus the git terminal window be
 Is special key and used for enable Bluetooth pairing (hold down for 5s) and moving through the different "menus" on the OLED screen.
 
 ## Compiling ESP32 code
-Follow instruction on [https://github.com/espressif/esp-idf](https://github.com/espressif/esp-idf) to set up the esp-idf, then just run `idf.py build` or use the [VSCode extension](https://github.com/espressif/vscode-esp-idf-extension).
+Follow instruction on [https://github.com/espressif/esp-idf](https://github.com/espressif/esp-idf) to set up the esp-idf, then just run `idf.py build` or use the [VSCode extension](https://github.com/espressif/vscode-esp-idf-extension). Tested with esp-idf 4.2.
 
 ## Tensorflow gesture/shape detection
 Tensorflow Lite is used to recognize what is being drawn on the touchpad. There are already some shapes/gestures training data collected by me and is found in the `/training/train_data` folder and a pre trained model using those is what is being used by default. The trackpad outputs x, y coordinates in the range [0,1792], coordinates collected between touch start and touch release are then converted into a 28x28 2D matrix which is used as input to TensorFlow.
