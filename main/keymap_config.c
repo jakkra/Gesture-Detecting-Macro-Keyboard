@@ -8,25 +8,25 @@ esp_err_t keymap_config_gesture_get_keys(gesture_label_t gesture, key_mask_t* sp
 
     switch (gesture) {
         case LABEL_LINE_DOWN_GESTURE:
-            keys[0] = HID_KEY_K;
+            keys[0] = HID_KEY_Q;
             break;
         case LABEL_LINE_HORIZONTAL_GESTURE:
-            keys[0] = HID_KEY_L;
-            break;
-        case LABEL_ARROW_DOWN:
-            keys[0] = HID_KEY_M;
-            break;
-        case LABEL_ARROW_UP:
             keys[0] = HID_KEY_P;
             break;
+        case LABEL_ARROW_DOWN:
+            keys[0] = HID_KEY_R;
+            break;
+        case LABEL_ARROW_UP:
+            keys[0] = HID_KEY_U;
+            break;
         case LABEL_C_GESTURE:
-            keys[0] = HID_KEY_N;
+            keys[0] = HID_KEY_S;
             break;
         case LABEL_ARROW_RIGHT:
-            keys[0] = HID_KEY_O;
+            keys[0] = HID_KEY_T;
             break;
         case LABEL_S_GESTURE:
-            keys[0] = HID_KEY_Q;
+            keys[0] = HID_KEY_V;
             break;
         default:
             return ESP_FAIL;

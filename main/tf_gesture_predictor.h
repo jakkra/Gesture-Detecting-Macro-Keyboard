@@ -9,6 +9,7 @@ extern "C" {
 typedef struct gesture_prediction_t {
     gesture_label_t label;
     float           probability;
+    uint32_t        calc_time_ms;
 } gesture_prediction_t;
 
 esp_err_t tf_gesture_predictor_init(void);

@@ -8,7 +8,7 @@ idf_component_register(
     keymap_config.c
     display.c
     keypress_input.c
-    crypto.c
+    market_data.c
     menu.c
     key_backlight.c
     INCLUDE_DIRS "")

@@ -146,6 +146,9 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
         ESP_LOGI(TAG, "pair status = %s",param->ble_security.auth_cmpl.success ? "success" : "fail");
         if (!param->ble_security.auth_cmpl.success) {
             ESP_LOGE(TAG, "fail reason = 0x%x",param->ble_security.auth_cmpl.fail_reason);
+            connection_callback(BLE_HID_BOND_FAILED, &param->ble_security.auth_cmpl.bd_addr);
+        } else {
+            connection_callback(BLE_HID_BOND_SUCCESS, &param->ble_security.auth_cmpl.bd_addr);
         }
         ble_hid_set_pairable(false);
         break;

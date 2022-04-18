@@ -8,114 +8,167 @@
 #include "driver/gpio.h"
 #include "ble_hid.h"
 
-#define NUM_BUTTONS 6
+#define NUM_KEY_COLS    2
+#define NUM_KEY_ROWS    5
 
-#define KEY_1_PIN   36
-#define KEY_2_PIN   33
-#define KEY_3_PIN   39
-#define KEY_4_PIN   32
-#define KEY_5_PIN   34
-#define KEY_6_PIN   23
 
 #define DEBOUNCE_TIME_MS 50
 #define LONGPRESS_TIME_MS 2000
 
-typedef struct btn_state_t {
-    uint32_t gpio_num;
-    uint32_t last_press_ms;
-    uint8_t key;
-    bool pressed;
-} btn_state_t;
+typedef struct btn_row_t {
+    key_info_t buttons[NUM_KEY_COLS];
+    uint32_t    gpio_num;
+} btn_row_t;
 
-static void configure_gpios(void);
 static void button_task(void* arg);
-static void IRAM_ATTR isr_button_pressed(void* arg);
+static void read_all_switches(void);
 
-
-static btn_state_t buttons[NUM_BUTTONS] = {
-    { .gpio_num = KEY_1_PIN, .key = KEYPAD_SWITCH_1 },
-    { .gpio_num = KEY_2_PIN, .key = KEYPAD_SWITCH_2 },
-    { .gpio_num = KEY_3_PIN, .key = KEYPAD_SWITCH_3 },
-    { .gpio_num = KEY_4_PIN, .key = KEYPAD_SWITCH_4 },
-    { .gpio_num = KEY_5_PIN, .key = KEYPAD_SWITCH_5 },
-    { .gpio_num = KEY_6_PIN, .key = KEYPAD_SWITCH_6 },
+static uint32_t columnPins[NUM_KEY_COLS] = {
+    GPIO_NUM_25,
+    GPIO_NUM_13,
 };
 
-static xQueueHandle button_evt_queue = NULL;
-static keypress_callback* pressed_callback = NULL;
+static btn_row_t rows[NUM_KEY_ROWS] = {
+    { .gpio_num = GPIO_NUM_2, .buttons = {{ .key = KEYPAD_SWITCH_1 }, { .key = KEYPAD_SWITCH_2 }} },
+    { .gpio_num = GPIO_NUM_5, .buttons = {{ .key = KEYPAD_SWITCH_3 }, { .key = KEYPAD_SWITCH_4 }} },
+    { .gpio_num = GPIO_NUM_17, .buttons = {{ .key = KEYPAD_SWITCH_5 }, { .key = KEYPAD_SWITCH_6 }} },
+    { .gpio_num = GPIO_NUM_18, .buttons = {{ .key = KEYPAD_SWITCH_7 }, { .key = KEYPAD_SWITCH_8 }} },
+    { .gpio_num = GPIO_NUM_23, .buttons = {{ .key = KEYPAD_SWITCH_9 }, { .key = KEYPAD_SWITCH_10 }} },
+};
 
-void keypress_input_init(void) {
-    configure_gpios();
+static btn_row_t mode_button = { .gpio_num = GPIO_NUM_27, .buttons = {{ .key = KEYPAD_SWITCH_MODE }} };
+
+static key_scan_callback* keys_scanned_callback = NULL;
+static int scan_interval_ms;
+
+void keypress_input_init(int key_scan_interval_ms) {
+    gpio_config_t io_conf_col;
+    gpio_config_t io_conf_row;
+
+    scan_interval_ms = key_scan_interval_ms;
+
+    io_conf_col.mode = GPIO_MODE_OUTPUT;
+    io_conf_col.pull_down_en = 1;
+    io_conf_col.pull_up_en = 0;
+
+    io_conf_row.mode = GPIO_MODE_INPUT;
+    io_conf_row.pull_down_en = 1;
+    io_conf_row.pull_up_en = 0;
+
+    io_conf_row.pin_bit_mask = 1ULL << (mode_button.gpio_num);
+    gpio_config(&io_conf_row);
+
+    for (int i = 0; i < NUM_KEY_COLS; i++) {
+        io_conf_col.pin_bit_mask = 1ULL << (columnPins[i]);
+        gpio_config(&io_conf_col);
+    }
+    for (int i = 0; i < NUM_KEY_ROWS; i++) {
+        io_conf_row.pin_bit_mask = 1ULL << (rows[i].gpio_num);
+        gpio_config(&io_conf_row);
+    }
 }
 
-void keypress_input_set_callback(keypress_callback* callback) {
-    pressed_callback = callback;
+void keypress_input_set_callback(key_scan_callback* callback) {
+    keys_scanned_callback = callback;
 
-    button_evt_queue = xQueueCreate(NUM_BUTTONS, sizeof(uint32_t));
     xTaskCreate(button_task, "button_task", 2048, NULL, 10, NULL);
 }
 
 int keypress_input_read(keypad_switch_t switch_num) {
-    assert(switch_num < NUM_BUTTONS);
-    return gpio_get_level(buttons[(int)switch_num].gpio_num);
+    return gpio_get_level(mode_button.gpio_num);
+    return 0;
+}
+
+static char* keypad_mode_to_name(keypad_switch_t switch_num)
+{
+    switch (switch_num) {
+        case KEYPAD_SWITCH_STATE_RELEASED:
+            return "KEYPAD_SWITCH_STATE_RELEASED";
+        case KEYPAD_SWITCH_STATE_PRESSED:
+            return "KEYPAD_SWITCH_STATE_PRESSED";
+        case KEYPAD_SWITCH_STATE_SHORT_PRESSED:
+            return "KEYPAD_SWITCH_STATE_SHORT_PRESSED";
+        case KEYPAD_SWITCH_STATE_LONG_PRESSED:
+            return "KEYPAD_SWITCH_STATE_LONG_PRESSED";
+        default:
+            return "INVALID_STATE";
+    }
+}
+
+static void update_switch_state(key_info_t* key, bool pressed)
+{
+    uint32_t current_time = esp_timer_get_time() / 1000;
+
+    switch (key->state) {
+    case KEYPAD_SWITCH_STATE_RELEASED:
+        if (pressed) {
+            key->state = KEYPAD_SWITCH_STATE_PRESSED;
+            key->last_press_ms = current_time;
+        }
+        break;
+    case KEYPAD_SWITCH_STATE_PRESSED:
+        if (!pressed) {
+            if ((current_time - key->last_press_ms) < LONGPRESS_TIME_MS) {
+                key->state = KEYPAD_SWITCH_STATE_SHORT_PRESSED;
+            } else {
+                key->state = KEYPAD_SWITCH_STATE_LONG_PRESSED;
+            }
+        }
+        break;
+    case KEYPAD_SWITCH_STATE_SHORT_PRESSED:
+    case KEYPAD_SWITCH_STATE_LONG_PRESSED:
+        if (!pressed) {
+            key->state = KEYPAD_SWITCH_STATE_RELEASED;
+            key->last_press_ms = 0;
+        } else {
+            key->state = KEYPAD_SWITCH_STATE_PRESSED; // We missed reading the release => go to pressed state
+            key->last_press_ms = current_time;
+        }
+        break;
+    default:
+        assert(0);
+        break;
+    }
 }
 
 static void button_task(void* arg)
 {
-    btn_state_t* button;
-    uint32_t current_ms;
+    key_info_t keys[KEYPAD_SWITCH_END];
+    int index;
 
     for (;;) {
-        if (xQueueReceive(button_evt_queue, &button, portMAX_DELAY)) {
-            int pressed = gpio_get_level(button->gpio_num);
-            current_ms = esp_timer_get_time() / 1000;
-            if (pressed && !button->pressed) {
-                vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_TIME_MS));
-                if (gpio_get_level(button->gpio_num)) {
-                    button->last_press_ms = current_ms;
-                    button->pressed = true;
-                } else {
-                    button->pressed = false;
-                    pressed_callback(button->key, false);
-                }
-            } else if (!pressed && button->pressed) {
-                if (current_ms - button->last_press_ms > LONGPRESS_TIME_MS) {
-                    button->pressed = false;
-                    pressed_callback(button->key, true);
-                } else {
-                    button->pressed = false;
-                    pressed_callback(button->key, false);
-                }
+        index = 0;
+        read_all_switches();
+        for (int row = 0; row < NUM_KEY_ROWS; row++) {
+            for (int col = 0; col < NUM_KEY_COLS; col++) {
+                keys[index] = rows[row].buttons[col];
+                index++;
             }
-            gpio_isr_handler_add(button->gpio_num, isr_button_pressed, (void*)button);
+        }
+        keys[index] = mode_button.buttons[0];
+        keys_scanned_callback(keys, index + 1);
+        vTaskDelay(pdMS_TO_TICKS(scan_interval_ms));
+    }
+}
+
+static void reset_all_col(void) {
+    for (int i = 0; i < NUM_KEY_COLS; i++) {
+        gpio_set_level(columnPins[i], 0);
+    }
+}
+
+static void read_all_switches(void) {
+    int val;
+
+    for (int i = 0; i < NUM_KEY_COLS; i++) {
+        reset_all_col();
+        gpio_set_level(columnPins[i], 1);
+        for (int j = 0; j < NUM_KEY_ROWS; j++) {
+            val = gpio_get_level(rows[j].gpio_num);
+            update_switch_state(&rows[j].buttons[i], val);
         }
     }
-}
 
-static void IRAM_ATTR isr_button_pressed(void* arg)
-{
-    if (pressed_callback == NULL) {
-        return;
-    }
-    btn_state_t* button = (btn_state_t*)arg;
-    gpio_isr_handler_remove(button->gpio_num);
-    xQueueSendFromISR(button_evt_queue, &button, NULL);
-}
-
-static void configure_gpios(void) {
-    gpio_config_t io_conf;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_down_en = 1;
-    io_conf.pull_up_en = 0;
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
-
-    for (int i = 0; i < NUM_BUTTONS; i++) {
-        io_conf.pin_bit_mask = 1ULL << (buttons[i].gpio_num);
-        gpio_config(&io_conf);
-    }
-
-    gpio_install_isr_service(0);
-    for (int i = 0; i < NUM_BUTTONS; i++) {
-        gpio_isr_handler_add(buttons[i].gpio_num, isr_button_pressed, (void*)&buttons[i]);
-    }
+    reset_all_col();
+    update_switch_state(&mode_button.buttons[0], gpio_get_level(mode_button.gpio_num));
 }

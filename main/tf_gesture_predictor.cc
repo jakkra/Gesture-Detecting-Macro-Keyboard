@@ -81,12 +81,14 @@ esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_p
   TfLiteStatus invoke_status;
   float max = 0;
   gesture_label_t label;
+  int64_t calc_start_time;
 
   assert(data_length == input_length_bytes);
 
   if (print_input) {
     print_input_data(input_data);
   }
+  calc_start_time = esp_timer_get_time();
 #ifdef MODEL_CENTER_GESTURE_IN_DATA
   // Same logic as when training the model to center the gesture in the matrix.
   memset(input, 0, data_length);
@@ -161,6 +163,7 @@ esp_err_t tf_gesture_predictor_run(float* input_data, int data_length, gesture_p
 
   p_result->label = label;
   p_result->probability = max;
+  p_result->calc_time_ms = (uint32_t)(esp_timer_get_time() - calc_start_time) / 1000;
 
   return ESP_OK;
 }
