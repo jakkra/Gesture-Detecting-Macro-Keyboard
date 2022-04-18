@@ -188,13 +188,16 @@ static void render_market_data(void) {
 static void render_gesture(void) {
     char line1[MAX_LINE_LENGTH];
     char line2[MAX_LINE_LENGTH];
+    char line3[MAX_LINE_LENGTH];
     memset(line1, 0, sizeof(line1));
     memset(line2, 0, sizeof(line2));
+    memset(line3, 0, sizeof(line3));
 
     display_clear();
-    snprintf(line1, sizeof(line1), "Probability: %f", data.gesture.prediction.probability);
-    snprintf(line2, sizeof(line2), "%s", tf_gesture_predictor_get_name(data.gesture.prediction.label));
-    display_draw_text(line1, line2, "", "");
+    snprintf(line1, sizeof(line1), "%s", tf_gesture_predictor_get_name(data.gesture.prediction.label));
+    snprintf(line2, sizeof(line2), "Probability: %f", data.gesture.prediction.probability);
+    snprintf(line3, sizeof(line3), "Took %d ms", data.gesture.prediction.calc_time_ms);
+    display_draw_text(line1, line2, line3, "");
 }
 
 static void render_connection(void) {
