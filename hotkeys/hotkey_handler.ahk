@@ -3,74 +3,94 @@
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
-winId1 = 0
-winId2Git = 0
-winId3 = 0
-winId4 = 0
-winId5 = 0
-winId6 = 0
-winId7 = 0
-winId8 = 0
-winId9 = 0
 
+; Read the value from the .ini file.
+if FileExist("SavedVals.ini") {
+    MsgBox, SavedVals.ini exists.
+    IniRead, winId1, SavedVals.ini, SavedValsSection, winId1
+    IniRead, winId2, SavedVals.ini, SavedValsSection, winId2
+    IniRead, winId3, SavedVals.ini, SavedValsSection, winId3
+    IniRead, winId4, SavedVals.ini, SavedValsSection, winId4
+    IniRead, winId5, SavedVals.ini, SavedValsSection, winId5
+    IniRead, winId6windows, SavedVals.ini, SavedValsSection, winId6windows
+    IniRead, winId7gitlab, SavedVals.ini, SavedValsSection, winId7gitlab
+    IniRead, winId8, SavedVals.ini, SavedValsSection, winId8
+    IniRead, winId9Git, SavedVals.ini, SavedValsSection, winId9Git
+    IniRead, winId10, SavedVals.ini, SavedValsSection, winId10
+} else {
+    winId1 = 0
+    winId2 = 0
+    winId3 = 0
+    winId4 = 0
+    winId5 = 0
+    winId6windows = 0
+    winId7gitlab = 0
+    winId8 = 0
+    winId9Git = 0
+    winId10 = 0
+}
+
+; Set it to run code when the script ends, such as shutdown, clicking exit from the tray icon, reloading, etc.
+OnExit, ExitProgram
+
+DetectHiddenWindows, On
 
 ; Swipe horizontal
-^!t::  ; Ctrl+Alt+t
+^!+1::  ; Ctrl+Alt+shift+1
 {
-    WinActivate ahk_id %winId2Git%
+    WinActivate ahk_id %winId9Git%
     Send git diff{Enter}
     return
 }
 
 ; Swipe vertical
-^!u::  ; Ctrl+Alt+u
+^!+2::  ; Ctrl+Alt+shift+2
 {
-    WinActivate ahk_id %winId2Git%
+    WinActivate ahk_id %winId9Git%
     Send git log{Enter}
     return
 }
 
 ; Swipe Arrow down
-^!v::  ; Ctrl+Alt+v
+^!+3::  ; Ctrl+Alt+shift+3
 {
-    WinActivate ahk_id %winId2Git%
+    WinActivate ahk_id %winId9Git%
     Send git fetch && git pull origin $(git rev-parse --abbrev-ref HEAD){Enter}
     return
 }
 
 ; Swipe 'C' as in COM Ports
-^!w::  ; Ctrl+Alt+w
+^!+4::  ; Ctrl+Alt+shift+4
 {
     listComPorts()
     return
 }
 
 ; Swipe Arrow Right
-^!x::  ; Ctrl+Alt+x
+^!+5::  ; Ctrl+Alt+shift+5
 {
     send {Media_Next}
     return
 }
 
 ; Swipe Arrow Up
-^!y::  ; Ctrl+Alt+u
+^!+6::  ; Ctrl+Alt+shift+6
 {
-    WinActivate ahk_id %winId2Git%
+    WinActivate ahk_id %winId9Git%
     Send git push origin $(git rev-parse --abbrev-ref HEAD)
     return
 }
 
 ; Swipe S
-^!z::  ; Ctrl+Alt+v
+^!+7::  ; Ctrl+Alt+shift+7
 {
-    WinActivate ahk_id %winId2Git%
+    WinActivate ahk_id %winId9Git%
     Send git status{Enter}
     return
 }
 
 openIfMinimizedHideIfOpen(winid)
 {
-    DetectHiddenWindows, On
     WinGet, activeWin ,, A
     if (winid == activeWin)
     {
@@ -131,7 +151,7 @@ listComPorts()
 
 ^!b::  ; Ctrl+Alt+b
 {
-    openIfMinimizedHideIfOpen(winId2Git)
+    openIfMinimizedHideIfOpen(winId2)
     return
 }
 
@@ -155,13 +175,15 @@ listComPorts()
 
 ^!f::  ; Ctrl+Alt+f
 {
-    openIfMinimizedHideIfOpen(winId6)
+    Send #{tab} ;Win + tab (show all windows)
+    ;openIfMinimizedHideIfOpen(winId6windows)
     return
 }
 
 ^!g::  ; Ctrl+Alt+g
 {
-    openIfMinimizedHideIfOpen(winId7)
+    Run, chrome.exe "https://git-sho-mlm.u-blox.net/" " --new-window "
+    ;openIfMinimizedHideIfOpen(winId7gitlab)
     return
 }
 
@@ -173,7 +195,13 @@ listComPorts()
 
 ^!i::  ; Ctrl+Alt+i
 {
-    openIfMinimizedHideIfOpen(winId9)
+    openIfMinimizedHideIfOpen(winId9Git)
+    return
+}
+
+^!j::  ; Ctrl+Alt+j
+{
+    openIfMinimizedHideIfOpen(winId10)
     return
 }
 
@@ -196,7 +224,7 @@ listComPorts()
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
-    winId2Git = %winid%
+    winId2 = %winid%
     return
 }
 
@@ -228,7 +256,7 @@ listComPorts()
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
-    winId6 = %winid%
+    winId6windows = %winid%
     return
 }
 
@@ -236,7 +264,7 @@ listComPorts()
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
-    winId7 = %winid%
+    winId7gitlab = %winid%
     return
 }
 
@@ -252,6 +280,31 @@ listComPorts()
 {
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
-    winId9 = %winid%
+    winId9Git = %winid%
     return
 }
+
+^!t::  ; Ctrl+Alt+t
+{
+    SoundBeep, 150, 250
+    WinGet, winid ,, A ;
+    winId10 = %winid%
+    return
+}
+
+; return so that ExitProgram is not executed now
+return
+
+; The code to run when it exits.
+ExitProgram:
+	IniWrite, %winId1%, SavedVals.ini, SavedValsSection, winId1
+    IniWrite, %winId2%, SavedVals.ini, SavedValsSection, winId2
+    IniWrite, %winId3%, SavedVals.ini, SavedValsSection, winId3
+    IniWrite, %winId4%, SavedVals.ini, SavedValsSection, winId4
+    IniWrite, %winId5%, SavedVals.ini, SavedValsSection, winId5
+    IniWrite, %winId6windows%, SavedVals.ini, SavedValsSection, winId6windows
+    IniWrite, %winId7gitlab%, SavedVals.ini, SavedValsSection, winId7gitlab
+    IniWrite, %winId8%, SavedVals.ini, SavedValsSection, winId8
+    IniWrite, %winId9Git%, SavedVals.ini, SavedValsSection, winId9Git
+    IniWrite, %winId10%, SavedVals.ini, SavedValsSection, winId10
+    ExitApp

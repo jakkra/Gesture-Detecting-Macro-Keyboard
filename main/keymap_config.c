@@ -4,29 +4,29 @@
 #include "keypress_input.h"
 
 esp_err_t keymap_config_gesture_get_keys(gesture_label_t gesture, key_mask_t* special_key_mask, uint8_t* keys, uint8_t* num_keys) {
-    *special_key_mask = LEFT_CONTROL_KEY_MASK | LEFT_ALT_KEY_MASK;
+    *special_key_mask = LEFT_CONTROL_KEY_MASK | LEFT_ALT_KEY_MASK | LEFT_SHIFT_KEY_MASK;
 
     switch (gesture) {
         case LABEL_LINE_HORIZONTAL_GESTURE:
-            keys[0] = HID_KEY_T;
+            keys[0] = HID_KEY_1;
             break;
         case LABEL_LINE_DOWN_GESTURE:
-            keys[0] = HID_KEY_U;
+            keys[0] = HID_KEY_2;
             break;
         case LABEL_ARROW_DOWN:
-            keys[0] = HID_KEY_V;
+            keys[0] = HID_KEY_3;
             break;
         case LABEL_C_GESTURE:
-            keys[0] = HID_KEY_W;
+            keys[0] = HID_KEY_4;
             break;
         case LABEL_ARROW_RIGHT:
-            keys[0] = HID_KEY_X;
+            keys[0] = HID_KEY_5;
             break;
         case LABEL_ARROW_UP:
-            keys[0] = HID_KEY_Y;
+            keys[0] = HID_KEY_6;
             break;
         case LABEL_S_GESTURE:
-            keys[0] = HID_KEY_Z;
+            keys[0] = HID_KEY_7;
             break;
         default:
             return ESP_FAIL;
@@ -66,6 +66,9 @@ esp_err_t keymap_config_switch_get_keys(keypad_switch_t key, bool longpress, key
             break;
         case KEYPAD_SWITCH_9:
             keys[0] = HID_KEY_I;
+            break;
+        case KEYPAD_SWITCH_10:
+            keys[0] = HID_KEY_J;
             break;
         default:
             return ESP_FAIL;

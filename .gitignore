@@ -4,3 +4,4 @@ sdkconfig.old
 sdkconfig
 *.exe
 __pycache__
+SavedVals.ini
