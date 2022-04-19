@@ -7,7 +7,7 @@
 
 static const char *TAG = "market_data";
 
-#define MAX_HTTP_RSP_LEN    1600
+#define MAX_HTTP_RSP_LEN    2000
 #define MAX_URL_LEN         150
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt);
