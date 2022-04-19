@@ -30,6 +30,7 @@
 
 #define PRINT_GESTURE_DATA    0
 #define SWITCH_UPDATE_RATE_MS 20
+#define MARKET_DATA_REFRESH_INTERVAL_MS 60 * 1000
 
 static const char* TAG = "main";
 
@@ -95,9 +96,9 @@ void app_main(void) {
   init_wifi();
 
   ESP_ERROR_CHECK(tf_gesture_predictor_init());
-  
-  xTaskCreate(periodic_update_thread, "periodic_update_thread", 5000, NULL, 10, NULL);
+
   int64_t start = esp_timer_get_time();
+  xTaskCreate(periodic_update_thread, "periodic_update_thread", 5000, NULL, 10, NULL);
   tf_gesture_predictor_run(v_shape, sizeof(v_shape), &prediction, PRINT_GESTURE_DATA);
   printf("Prediction took %dms\n", (int)(esp_timer_get_time() - start) / 1000);
 
@@ -336,8 +337,10 @@ static void periodic_update_thread(void* arg) {
       market_data_get_stock("^OMX", &omx, &omx_change);
       market_data_get_stock("^IXIC", &nasdaq, &nasdaq_change);
       menu_draw_market_data(btc, btc_change, doge, doge_change, omx, omx_change, nasdaq, nasdaq_change);
+      vTaskDelay(pdMS_TO_TICKS(MARKET_DATA_REFRESH_INTERVAL_MS));
+    } else {
+      vTaskDelay(pdMS_TO_TICKS(2000));
     }
-    vTaskDelay(pdMS_TO_TICKS(5000));
   }
 }
 

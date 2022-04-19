@@ -8,9 +8,14 @@ winId2Git = 0
 winId3 = 0
 winId4 = 0
 winId5 = 0
+winId6 = 0
+winId7 = 0
+winId8 = 0
+winId9 = 0
+
 
 ; Swipe horizontal
-^!p::  ; Ctrl+Alt+p
+^!t::  ; Ctrl+Alt+t
 {
     WinActivate ahk_id %winId2Git%
     Send git diff{Enter}
@@ -18,7 +23,7 @@ winId5 = 0
 }
 
 ; Swipe vertical
-^!q::  ; Ctrl+Alt+q
+^!u::  ; Ctrl+Alt+u
 {
     WinActivate ahk_id %winId2Git%
     Send git log{Enter}
@@ -26,7 +31,7 @@ winId5 = 0
 }
 
 ; Swipe Arrow down
-^!r::  ; Ctrl+Alt+r
+^!v::  ; Ctrl+Alt+v
 {
     WinActivate ahk_id %winId2Git%
     Send git fetch && git pull origin $(git rev-parse --abbrev-ref HEAD){Enter}
@@ -34,21 +39,21 @@ winId5 = 0
 }
 
 ; Swipe 'C' as in COM Ports
-^!s::  ; Ctrl+Alt+s
+^!w::  ; Ctrl+Alt+w
 {
     listComPorts()
     return
 }
 
 ; Swipe Arrow Right
-^!t::  ; Ctrl+Alt+t
+^!x::  ; Ctrl+Alt+x
 {
     send {Media_Next}
     return
 }
 
 ; Swipe Arrow Up
-^!u::  ; Ctrl+Alt+u
+^!y::  ; Ctrl+Alt+u
 {
     WinActivate ahk_id %winId2Git%
     Send git push origin $(git rev-parse --abbrev-ref HEAD)
@@ -56,7 +61,7 @@ winId5 = 0
 }
 
 ; Swipe S
-^!v::  ; Ctrl+Alt+v
+^!z::  ; Ctrl+Alt+v
 {
     WinActivate ahk_id %winId2Git%
     Send git status{Enter}
@@ -74,6 +79,7 @@ openIfMinimizedHideIfOpen(winid)
     {
         WinActivate ahk_id %winid%
     }
+
     return
 }
 
@@ -102,7 +108,7 @@ listComPorts()
                     }
                 }
             }
-            
+
         }
     }
     res := ""
@@ -111,7 +117,7 @@ listComPorts()
         res .= element
         res .= "`n"
     }
-    
+
     ;MsgBox  %res%
     TrayTip , , %res%, 5, (16 + 32)
 }
@@ -143,6 +149,30 @@ listComPorts()
 ^!e::  ; Ctrl+Alt+e
 {
     openIfMinimizedHideIfOpen(winId5)
+    return
+}
+
+^!f::  ; Ctrl+Alt+f
+{
+    openIfMinimizedHideIfOpen(winId6)
+    return
+}
+
+^!g::  ; Ctrl+Alt+g
+{
+    openIfMinimizedHideIfOpen(winId7)
+    return
+}
+
+^!h::  ; Ctrl+Alt+h
+{
+    openIfMinimizedHideIfOpen(winId8)
+    return
+}
+
+^!i::  ; Ctrl+Alt+i
+{
+    openIfMinimizedHideIfOpen(winId9)
     return
 }
 
@@ -190,5 +220,37 @@ listComPorts()
     SoundBeep, 150, 250
     WinGet, winid ,, A ;
     winId5 = %winid%
+    return
+}
+
+^!p::  ; Ctrl+Alt+p
+{
+    SoundBeep, 150, 250
+    WinGet, winid ,, A ;
+    winId6 = %winid%
+    return
+}
+
+^!q::  ; Ctrl+Alt+q
+{
+    SoundBeep, 150, 250
+    WinGet, winid ,, A ;
+    winId7 = %winid%
+    return
+}
+
+^!r::  ; Ctrl+Alt+r
+{
+    SoundBeep, 150, 250
+    WinGet, winid ,, A ;
+    winId8 = %winid%
+    return
+}
+
+^!s::  ; Ctrl+Alt+s
+{
+    SoundBeep, 150, 250
+    WinGet, winid ,, A ;
+    winId9 = %winid%
     return
 }
