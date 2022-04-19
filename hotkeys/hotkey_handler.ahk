@@ -70,6 +70,7 @@ winId9 = 0
 
 openIfMinimizedHideIfOpen(winid)
 {
+    DetectHiddenWindows, On
     WinGet, activeWin ,, A
     if (winid == activeWin)
     {
